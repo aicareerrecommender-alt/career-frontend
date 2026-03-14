@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareerPath AI | Smart Learning Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/wordcloud2.js/1.2.2/wordcloud2.min.js"></script>
+
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f4f6f9; 
+        }
+        
+        .sidebar { 
+            height: 100vh; 
+            background: #1e293b; 
+            color: white; 
+            position: fixed; 
+            width: 280px; 
+            z-index: 1000; 
+            overflow-y: auto;
+        }
+        
+        .nav-link { 
+            color: rgba(255,255,255,0.7); 
+            transition: 0.3s; 
+            margin-bottom: 5px; 
+            border-radius: 8px; 
+            font-weight: 500;
+        }
+        
+        .nav-link:hover, .nav-link.active { 
+            color: white; 
+            background: rgba(255,255,255,0.1); 
+        }
+        
+        .main-content { 
+            margin-left: 280px; 
+            padding: 40px; 
+        }
+        
+        .ai-card { 
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); 
+            color: white; 
+            border-radius: 16px; 
+        }
+        
+        .community-box { 
+            background-color: #e0e7ff; 
+            border-left: 5px solid #4f46e5; 
+            color: #3730a3; 
+            border-radius: 8px; 
+        }
+        
+        .reason-box { 
+            background-color: #f0fdf4; 
+            border-left: 5px solid #10b981; 
+            border-radius: 12px; 
+        }
+        
+        .uni-card { 
+            border: none; 
+            border-radius: 12px; 
+            transition: transform 0.2s ease, box-shadow 0.2s ease; 
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); 
+            background: white; 
+            cursor: pointer; 
+        }
+        
+        .uni-card:hover { 
+            transform: translateY(-4px); 
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); 
+        }
+        
+        .alt-card { 
+            border-left: 4px solid #f59e0b; 
+            background-color: #fffbeb; 
+            transition: all 0.3s ease; 
+            cursor: pointer; 
+        }
+        
+        .alt-card:hover { 
+            transform: translateX(8px); 
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15); 
+        }
+        
+        .roadmap-container strong { 
+            display: block; 
+            margin-top: 15px; 
+            color: #1e293b; 
+            font-size: 1.1rem; 
+        }
+        
+        .status-card-val { 
+            font-size: 3.5rem; 
+            font-weight: 800; 
+            line-height: 1; 
+            font-family: 'Poppins', sans-serif; 
+        }
+        
+        .grade-pink { color: #ec4899; }
+        .points-green { color: #10b981; }
+
+        /* Inbox Styling for Saved Reports */
+        .inbox-container { 
+            background: white; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); 
+            overflow: hidden; 
+        }
+        .inbox-header { 
+            background-color: #f8fafc; 
+            border-bottom: 1px solid #e2e8f0; 
+            padding: 15px 20px; 
+            font-weight: 600; 
+            color: #64748b; 
+            display: flex; 
+        }
+        .inbox-row { 
+            display: flex; 
+            align-items: center; 
+            padding: 16px 20px; 
+            border-bottom: 1px solid #f1f5f9; 
+            cursor: pointer; 
+            transition: background 0.2s; 
+        }
+        .inbox-row:hover { 
+            background-color: #f8fafc; 
+            box-shadow: inset 4px 0 0 #4f46e5; 
+        }
+        .inbox-row:last-child { border-bottom: none; }
+        .star-col { width: 40px; color: #cbd5e1; }
+        .inbox-row:hover .star-col { color: #f59e0b; }
+        .course-col { flex: 1; min-width: 0; padding-right: 20px;}
+        .level-col { width: 120px; text-align: right; padding-right: 20px; } 
+        .date-col { width: 100px; text-align: right; color: #64748b; font-size: 0.85rem; font-weight: 500;}
+        .course-title { font-weight: 600; color: #1e293b; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+        .course-subtitle { font-size: 0.85rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+        .level-badge { font-size: 0.75rem; padding: 5px 10px; }
+        
+        /* Section Display Logic */
+        .content-section { display: none; }
+        .content-section.active { 
+            display: block; 
+            animation: slideIn 0.4s ease-out; 
+        }
+        
+        @keyframes slideIn { 
+            from { opacity: 0; transform: translateY(20px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+
+        .sidebar::-webkit-scrollbar { width: 6px; }
+        .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; height: auto; position: relative; }
+            .main-content { margin-left: 0; padding: 20px; }
+            .date-col, .level-col { display: none; }
+        } 
+
+    </style><link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1e293b">
+<link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+   
+<div id="main-app">
+    <div class="sidebar d-flex flex-column p-4 shadow-lg">
+        <h4 class="fw-bold mb-4 text-white"><i class="fas fa-brain me-2 text-info"></i>CareerPath AI</h4>
+        
+        <ul class="nav flex-column mb-auto">
+            <li class="nav-item">
+                <a href="#" class="nav-link active" onclick="showSection('profile', event)">
+                    <i class="fas fa-user-edit me-3"></i>Profile Setup
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" onclick="showSection('audit', event)">
+                    <i class="fas fa-chart-pie me-3"></i>Intelligence Report
+                </a>
+            </li>
+            <li class="nav-item mt-2">
+                <a href="#" class="nav-link d-flex justify-content-between align-items-center" onclick="showSection('reports', event); fetchHistory();">
+                    <span><i class="fas fa-folder-open me-3"></i>Saved Reports</span>
+                    <span class="badge bg-info rounded-pill text-dark" id="reportCountBadge">0</span>
+                </a>
+            </li>
+        </ul>
+
+        <div class="mt-4 pt-3 border-top border-secondary text-center text-secondary small">
+            Logged in as: <strong id="sidebar-user" class="text-light"></strong><br>
+            
+            <div class="d-flex flex-column gap-2 mt-2">
+                <button class="btn btn-sm btn-outline-info w-100" data-bs-toggle="modal" data-bs-target="#accountSettingsModal">
+                    <i class="fas fa-cog me-2"></i>Account Settings
+                </button>
+                <button onclick="logout()" class="btn btn-sm btn-outline-light w-100">
+                    <i class="fas fa-sign-out-alt me-2"></i>Log Out
+                </button>
+            </div>
+            <div class="mt-3 opacity-50">Powered by Gemini</div> 
+        </div>
+    </div>
+
+    <div class="main-content" id="dashboard-content">
+        
+        <div id="profile" class="content-section active">
+            
+            <div id="profileFormContainer">
+                <h2 class="fw-bold mb-2 text-dark">Welcome, <span id="welcomeName" class="text-primary"></span>! 👋</h2>
+                <p class="text-secondary mb-4 fs-5">Student Profile Setup</p>
+                
+                <div class="card p-4 border-0 shadow-sm mb-4 rounded-4">
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-secondary">Dream Career / Detailed Interests</label>
+                        <textarea class="form-control bg-light" id="interestArea" rows="3" placeholder="e.g. I love coding, music, helping people"></textarea>
+                    </div>
+                    <hr class="my-4 text-muted">
+                    <h5 class="fw-bold text-secondary mb-3"><i class="fas fa-book-open text-primary me-2"></i> Core Subject Grades</h5>
+                    <div class="row g-3 mb-2" id="gradeInputs"></div>
+                    
+                    <div class="mb-4">
+                        <small id="subject-count-warning" class="fw-bold bg-danger-subtle text-danger px-3 py-2 rounded-3 border border-danger-subtle d-inline-block">
+                            <i class="fas fa-exclamation-circle me-1"></i> Select exactly 7 subjects (0/7 selected).
+                        </small>
+                    </div>
+
+                    <hr class="my-4 text-muted">
+
+                    <div class="row g-4 mb-5 text-center">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-secondary text-uppercase tracking-wide">Overall Mean Grade</label>
+                            <div class="card bg-light border-0 shadow-sm py-4 rounded-4">
+                                <h1 class="status-card-val grade-pink mb-0" id="meanGradeDisplay">-</h1>
+                                <input type="hidden" id="meanGradeLetter">
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-secondary text-uppercase tracking-wide">Aggregate Points</label>
+                            <div class="card bg-light border-0 shadow-sm py-4 rounded-4">
+                                <h1 class="status-card-val points-green mb-0">
+                                    <span id="aggregatePointsDisplay">0</span><span class="fs-3 text-muted">/ 84</span>
+                                </h1>
+                                <input type="hidden" id="aggregatePoints">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="saveProfileBtn" class="btn btn-primary py-3 fs-5 fw-bold rounded-3 w-100 shadow-sm" onclick="previewProfile()" disabled>
+                        <i class="fas fa-save me-2"></i> Save & Preview Profile
+                    </button>
+                </div>
+            </div>
+
+            <div id="profileSummaryContainer" style="display: none;">
+                <h2 class="fw-bold mb-2 text-dark">Profile Confirmed <i class="fas fa-check-circle text-success ms-2"></i></h2>
+                <p class="text-secondary mb-4 fs-5">Review your academic profile before running the intelligence audit.</p>
+                
+                <div class="card p-5 border-0 shadow-sm mb-4 rounded-4 bg-white">
+                    
+<h6 class="fw-bold text-secondary mb-3 text-uppercase tracking-wide" style="font-size: 0.85rem;"><i class="fas fa-bullseye text-warning me-2"></i> Career Interests</h6>
+                    <div class="p-4 rounded-4 mb-5 shadow-sm" style="background-color: #f8fafc; border-left: 5px solid #4f46e5;">
+                        <p class="mb-0" id="summaryInterest" style="line-height: 1.75; font-size: 1.15rem; font-family: 'Georgia', serif; color: #334155; font-style: italic;"></p>
+                    </div>
+                    <div class="row g-4 mb-5">
+                        <div class="col-md-6">
+                            <div class="card bg-primary-subtle border-0 shadow-sm p-4 rounded-4 h-100 d-flex flex-row align-items-center justify-content-between transition-hover">
+                                <div>
+                                    <h5 class="fw-bold text-primary mb-1">Mean Grade</h5>
+                                    <p class="text-primary opacity-75 mb-0 small">Calculated from 7 subjects</p>
+                                </div>
+                                <h1 class="display-2 fw-bold text-primary mb-0" style="font-family: 'Poppins', sans-serif;" id="summaryMeanGrade">-</h1>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-success-subtle border-0 shadow-sm p-4 rounded-4 h-100 d-flex flex-row align-items-center justify-content-between transition-hover">
+                                <div>
+                                    <h5 class="fw-bold text-success mb-1">Total Points</h5>
+                                    <p class="text-success opacity-75 mb-0 small">Out of 84 aggregate points</p>
+                                </div>
+                                <h1 class="display-2 fw-bold text-success mb-0" style="font-family: 'Poppins', sans-serif;"><span id="summaryPoints">0</span></h1>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold text-secondary mb-4 text-uppercase tracking-wide border-bottom pb-2" style="font-size: 0.85rem;"><i class="fas fa-list-check text-info me-2"></i> Locked Subjects</h6>
+                    <div class="row g-3 mb-5" id="summarySubjectsList"></div>
+
+                    <div class="d-flex flex-column flex-md-row justify-content-center gap-3 mt-4 pt-4 border-top">
+                        <button class="btn btn-outline-secondary py-3 px-5 fw-bold rounded-3 shadow-sm order-2 order-md-1 w-100 w-md-auto" onclick="editProfile()">
+                            <i class="fas fa-edit me-2"></i> Make Changes
+                        </button>
+                        <button class="btn btn-primary py-3 px-5 fw-bold rounded-3 shadow-sm order-1 order-md-2 w-100 w-md-auto" onclick="getRecommendations()" id="runAuditBtn">
+                            <i class="fas fa-magic me-2"></i> Run Intelligence Audit
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="audit" class="content-section">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="fw-bold text-dark">AI Intelligence Report</h2>
+                <button onclick="downloadPDF()" class="btn btn-dark shadow-sm px-4 rounded-3 fw-bold" id="savePdfBtn" style="display: none;">
+                    <i class="fas fa-file-pdf text-danger me-2"></i> Save PDF
+                </button>
+            </div>
+            
+            <div id="auditEmptyState" class="text-center py-5 mt-5">
+                <i class="fas fa-chart-pie fa-4x text-muted mb-3 opacity-50"></i>
+                <h4 class="fw-bold text-secondary">No Active Analysis</h4>
+                <p class="text-muted">Go to 'Profile Setup' to run your first Intelligence Audit.</p>
+                <button class="btn btn-primary mt-3 px-4" onclick="showSection('profile', event)">Go to Profile Setup</button>
+            </div>
+
+            <div id="aiLoader" class="text-center py-5 mt-5" style="display:none;">
+                <div class="spinner-border text-primary mb-4" style="width: 3rem; height: 3rem;"></div>
+                <h2 class="fw-bold">Analyzing Your Career Path...</h2>
+                <p class="text-secondary">Matching grades with university requirements. You can navigate away, this will run in the background!</p>
+            </div>
+            
+            <div id="resultsContainer" style="display:none;">
+                <div class="card ai-card p-4 mb-4 position-relative overflow-hidden shadow-sm">
+                    <div class="position-absolute top-0 end-0 p-3 opacity-25"><i class="fas fa-rocket fa-7x"></i></div>
+                    <div class="position-relative z-1">
+                        <span class="badge bg-warning text-dark mb-3 px-3 py-2 fw-bold rounded-pill shadow-sm">
+                            <i class="fas fa-star me-1"></i> TOP QUALIFIED MATCH
+                        </span>
+                        <h1 class="display-6 fw-bold mb-2" id="aiCourseTag">Analyzing...</h1>
+                        <h5 class="text-light opacity-75 fw-normal" id="aiRoleLevelTag"></h5>
+                    </div>
+                </div>
+
+                <div id="matchReasonBox" class="p-4 mb-4 shadow-sm reason-box" style="display:none; background-color: #f0fdf4; border-left: 5px solid #10b981; border-radius: 12px;">
+                    <h6 class="fw-bold mb-3 text-success text-uppercase" style="letter-spacing: 0.5px; font-size: 0.85rem;"><i class="fas fa-bullseye me-2"></i>Why this fits your passion</h6>
+                    <p class="mb-0" id="matchReasonText" style="line-height: 1.75; font-size: 1.15rem; font-family: 'Georgia', serif; color: #334155; font-style: italic;"></p>
+                </div>
+
+                <div id="communityBox" class="p-3 mb-4 community-box shadow-sm" style="display:none;">
+                    <h6 class="fw-bold mb-2"><i class="fas fa-globe-africa me-2"></i>Community Intelligence</h6>
+                    <p class="mb-1" id="popText"></p>
+                    <div class="small opacity-75" id="pastRolesText"></div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4 rounded-4" id="skillsCloudContainer" style="display:none;">
+                    <div class="card-header bg-white border-bottom pt-4 pb-3 px-4 rounded-top-4">
+                        <h5 class="fw-bold text-dark mb-0"><i class="fas fa-fire text-danger me-2"></i> Trending Careers in this Field</h5>
+                    </div>
+                    <div class="card-body p-4 d-flex justify-content-center">
+                        <canvas id="skillsCloudCanvas" width="800" height="300" style="max-width: 100%;"></canvas>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-5 rounded-4">
+                    <div class="card-header bg-white border-bottom pt-4 pb-3 px-4 rounded-top-4">
+                        <h5 class="fw-bold text-dark mb-0"><i class="fas fa-map-signs text-primary me-2"></i> Your Action Plan</h5>
+                    </div>
+                    <div class="card-body p-4 text-secondary roadmap-container" style="line-height: 1.8;" id="aiRoadmapText">
+                        Consulting AI career experts...
+                    </div>
+                </div>
+
+                <h4 class="fw-bold text-dark mb-3"><i class="fas fa-university me-2 text-primary"></i>Verified University Pathways</h4>
+                <div class="row mb-5" id="resultsList"></div>
+
+                <div class="mt-4 border-top pt-4">
+                    <h5 class="fw-bold"><i class="fas fa-shield-alt text-warning me-2"></i> Alternative Career Paths</h5>
+                    <div id="altCoursesList" class="row g-3 mt-2"></div>
+                    
+                    <div class="card border-0 shadow-sm mt-5 mb-5 rounded-4 bg-white border-top border-primary border-4" id="refinementBox">
+                        <div class="card-body p-4">
+                            <h5 class="fw-bold text-dark mb-2"><i class="fas fa-sync-alt text-primary me-2"></i> Not quite what you expected?</h5>
+                            <p class="text-muted small mb-3">Tell the AI what you want to change, and it will generate a brand new report based on your feedback.</p>
+                            <div class="input-group shadow-sm rounded-3">
+                                <input type="text" id="refinementInput" class="form-control form-control-lg border-primary" placeholder="e.g., 'I want a job that involves more traveling'">
+                                <button class="btn btn-primary px-4 fw-bold" onclick="refineRecommendations()" id="refineBtn">
+                                    Regenerate <i class="fas fa-magic ms-2"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="reports" class="content-section">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold text-dark"><i class="fas fa-inbox text-primary me-2"></i>Intelligence Archive</h2>
+                    <p class="text-secondary">Review your previously generated career recommendations.</p>
+                </div>
+                <button class="btn btn-primary shadow-sm px-4 rounded-3" onclick="showSection('profile', event)">
+                    <i class="fas fa-plus me-2"></i> New Analysis
+                </button>
+            </div>
+
+            <div class="inbox-container shadow-sm" id="inboxList">
+                <div class="inbox-header">
+                    <div class="star-col"></div>
+                    <div class="course-col">Report Details</div>
+                    <div class="level-col">Academic Tier</div>
+                    <div class="date-col">Date</div>
+                </div>
+                
+                <div class="p-5 text-center text-muted" id="loadingState">
+                    <div class="spinner-border text-primary mb-3" role="status"></div>
+                    <p>Fetching your reports...</p>
+                </div>
+                
+                <div id="reportsContainer"></div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="modal fade" id="accountSettingsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content text-dark">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="fas fa-cog me-2"></i>Account Settings</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <hr class="text-muted mb-4">
+                <label class="form-label small fw-bold">Change Username</label>
+                <div class="input-group">
+                    <input type="text" id="settingsNewUsername" class="form-control" placeholder="New username">
+                    <button class="btn btn-primary" onclick="updateUsername()">Update Name</button>
+                </div>
+                <hr class="text-muted mb-4">
+                <div class="mb-2">
+                    <label class="form-label small fw-bold">Change Password</label>
+                    <div class="position-relative mb-2">
+                        <input type="password" id="oldPw" class="form-control pe-5" placeholder="Current Password">
+                        <i class="fas fa-eye position-absolute top-50 end-0 translate-middle-y me-3 text-muted" id="eyeIconOld" style="cursor: pointer; z-index: 1050; pointer-events: auto;" onclick="toggleVisibility('oldPw', 'eyeIconOld')"></i>
+                    </div>
+                    <div class="position-relative mb-2">
+                        <input type="password" id="newPw" class="form-control pe-5" placeholder="New Password">
+                        <i class="fas fa-eye position-absolute top-50 end-0 translate-middle-y me-3 text-muted" id="eyeIconNew" style="cursor: pointer; z-index: 1050; pointer-events: auto;" onclick="toggleVisibility('newPw', 'eyeIconNew')"></i>
+                    </div>
+                </div>
+                <button class="btn btn-outline-primary w-100 mt-2" onclick="updatePassword()">Update Password</button>
+            
+                <div class="mb-2 mt-4">
+                    <label class="form-label small fw-bold text-danger">Danger Zone</label>
+                    <button class="btn btn-outline-danger w-100" onclick="deleteAccount()">
+                        <i class="fas fa-trash-alt me-2"></i>Delete My Account
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="reportViewModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-light border-0 pb-3 d-flex justify-content-between align-items-center">
+                <h5 class="modal-title fw-bold text-dark" id="reportModalLabel"><i class="fas fa-file-alt text-primary me-2"></i> Report Summary</h5>
+                <div class="d-flex align-items-center">
+                    <button type="button" class="btn btn-dark btn-sm me-3 shadow-sm px-3 rounded-3" onclick="downloadSavedPDF()">
+                        <i class="fas fa-file-pdf text-danger me-1"></i> Download PDF
+                    </button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+            </div>
+            <div class="modal-body p-4" id="modalContent"></div>
+            <div class="modal-footer border-0 bg-light d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-danger shadow-sm px-3" onclick="deleteCurrentReport()">
+                    <i class="fas fa-trash-alt me-2"></i>Delete Report
+                </button>
+                <button type="button" class="btn btn-secondary shadow-sm px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const API_URL = "https://career-backend-504u.onrender.com";
+    let currentUser = "";
+    let currentResults = null;
+    let globalReports = []; 
+    let currentViewedReport = null;
+
+    const subjectsList = [
+        "Math", "English", "Kiswahili", "Biology", "Physics", 
+        "Chemistry", "History", "CRE", "Geography", "Business", 
+        "Agriculture", "Music", "Computer Studies", "Home Science"
+    ];
+    
+    const gradesMap = {
+        "A": 12, "A-": 11, "B+": 10, "B": 9, "B-": 8, 
+        "C+": 7, "C": 6, "C-": 5, "D+": 4, "D": 3, "D-": 2, "E": 1
+    };
+    
+    const reverseGradesMap = { 
+        12: "A", 11: "A-", 10: "B+", 9: "B", 8: "B-", 
+        7: "C+", 6: "C", 5: "C-", 4: "D+", 3: "D", 2: "D-", 1: "E" 
+    };
+    
+    const gradesList = Object.keys(gradesMap);
+
+    window.onload = () => {
+        const savedUser = localStorage.getItem('user_name');
+        if (!savedUser) { 
+            window.location.href = "login.html"; 
+            return; 
+        }
+        currentUser = savedUser;
+        document.getElementById("sidebar-user").innerText = currentUser;
+        document.getElementById("welcomeName").innerText = currentUser;
+        
+        generateSubjectInputs();
+        updateSidebarBadgeOnly();
+        loadSavedProfile(); 
+        showSection('profile'); 
+    };
+
+    function generateSubjectInputs() {
+        const container = document.getElementById('gradeInputs');
+        container.innerHTML = "";
+        
+        subjectsList.forEach(sub => {
+            let options = `<option value="">-</option>`;
+            gradesList.forEach(g => {
+                options += `<option value="${g}">${g} (${gradesMap[g]} Pts)</option>`;
+            });
+            
+            container.innerHTML += `
+                <div class="col-6 col-md-3 col-lg-2 mb-3">
+                    <label class="form-label small fw-bold text-muted mb-1">${sub}</label>
+                    <select class="form-select form-select-sm bg-light grade-select" id="grade-${sub.replace(/\s+/g, '')}" onchange="updateTotalPoints()"> 
+                        ${options}
+                    </select>
+                </div>`;
+        });
+    }
+
+    function updateTotalPoints() {
+        const selects = document.querySelectorAll('.grade-select');
+        let total = 0;
+        let count = 0;
+        
+        selects.forEach(select => {
+            if (select.value && gradesMap[select.value]) { 
+                total += gradesMap[select.value]; 
+                count++; 
+            }
+        });
+        
+        document.getElementById('aggregatePointsDisplay').innerText = total;
+        document.getElementById('aggregatePoints').value = total;
+
+        const meanDisplay = document.getElementById('meanGradeDisplay');
+        const meanHidden = document.getElementById('meanGradeLetter');
+        const warning = document.getElementById('subject-count-warning');
+        const saveBtn = document.getElementById('saveProfileBtn');
+
+        if (count > 0) {
+            const average = total / count;
+            const roundedPoints = Math.ceil(average); 
+            const letter = reverseGradesMap[roundedPoints] || "E";
+            meanDisplay.innerHTML = `${letter} <span class="fs-6 text-muted fw-normal">(${average.toFixed(2)})</span>`;
+            meanHidden.value = letter;
+        } else {
+            meanDisplay.innerText = "-";
+            meanHidden.value = "";
+        }
+
+        if (count === 7) {
+            warning.className = "fw-bold bg-success-subtle text-success px-3 py-2 rounded-3 border border-success-subtle d-inline-block";
+            warning.innerHTML = `<i class="fas fa-check-circle me-1"></i> 7/7 Subjects Selected. Ready!`;
+            saveBtn.disabled = false;
+        } else {
+            warning.className = "fw-bold bg-danger-subtle text-danger px-3 py-2 rounded-3 border border-danger-subtle d-inline-block";
+            warning.innerHTML = `<i class="fas fa-exclamation-circle me-1"></i> Select exactly 7 subjects (${count}/7 selected).`;
+            saveBtn.disabled = true;
+        }
+    }
+
+    function previewProfile() {
+        const interest = document.getElementById('interestArea').value.trim();
+        const points = document.getElementById('aggregatePoints').value;
+        const meanGrade = document.getElementById('meanGradeLetter').value;
+        const selects = document.querySelectorAll('.grade-select');
+        
+        let count = 0;
+        const subjects = {};
+        selects.forEach(s => {
+            if (s.value) { 
+                count++; 
+                subjects[s.id.replace('grade-', '')] = s.value; 
+            }
+        });
+
+        if (count !== 7) return alert("Please select exactly 7 subjects!");
+        if (!interest) return alert("Please fill in your Dream Career / Detailed Interests!");
+
+        const profileData = { interest, points, meanGrade, subjects };
+        localStorage.setItem(`${currentUser}_saved_profile`, JSON.stringify(profileData));
+
+        document.getElementById('summaryInterest').innerHTML = `"<i class="fas fa-quote-left opacity-25 me-2"></i>${interest}<i class="fas fa-quote-right opacity-25 ms-2"></i>"`;
+        document.getElementById('summaryMeanGrade').innerText = meanGrade;
+        document.getElementById('summaryPoints').innerText = points;
+
+        const summarySubjectsList = document.getElementById('summarySubjectsList');
+        summarySubjectsList.innerHTML = "";
+        
+        for (const [sub, grade] of Object.entries(subjects)) {
+            summarySubjectsList.innerHTML += `
+                <div class="col-md-3 col-sm-4 col-6">
+                    <div class="card bg-white border border-light-subtle shadow-sm py-3 px-3 rounded-4 text-center h-100">
+                        <small class="text-secondary fw-bold text-uppercase d-block text-truncate mb-2" style="font-size: 0.7rem; letter-spacing: 0.5px;">${sub}</small>
+                        <span class="fs-3 fw-bold text-dark" style="font-family: 'Poppins', sans-serif;">${grade}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        document.getElementById('profileFormContainer').style.display = 'none';
+        document.getElementById('profileSummaryContainer').style.display = 'block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function editProfile() {
+        document.getElementById('profileSummaryContainer').style.display = 'none';
+        document.getElementById('profileFormContainer').style.display = 'block';
+    }
+
+    function loadSavedProfile() {
+        const saved = localStorage.getItem(`${currentUser}_saved_profile`);
+        if (saved) {
+            try {
+                const profileData = JSON.parse(saved);
+                document.getElementById('interestArea').value = profileData.interest;
+                for (const [sub, grade] of Object.entries(profileData.subjects)) {
+                    const select = document.getElementById(`grade-${sub}`);
+                    if (select) select.value = grade;
+                }
+                updateTotalPoints();
+                previewProfile(); 
+            } catch (e) {
+                console.error("Error loading saved profile data", e);
+            }
+        } else {
+            document.getElementById('profileSummaryContainer').style.display = 'none';
+            document.getElementById('profileFormContainer').style.display = 'block';
+        }
+    }
+
+    function showSection(sectionId, event) {
+        document.querySelectorAll('.content-section').forEach(el => {
+            el.classList.remove('active');
+            el.style.display = 'none'; 
+        });
+        
+        document.querySelectorAll('.nav-link').forEach(el => {
+            el.classList.remove('active');
+        });
+        
+        const targetSection = document.getElementById(sectionId);
+        if(targetSection) {
+            targetSection.classList.add('active');
+            targetSection.style.display = 'block';
+        }
+        
+        if (event && event.currentTarget) {
+            event.currentTarget.classList.add('active');
+        } else {
+            const link = document.querySelector(`a[onclick*="${sectionId}"]`);
+            if(link) link.classList.add('active');
+        }
+    }
+
+    function logout() { 
+        localStorage.removeItem('user_name'); 
+        window.location.href = "login.html"; 
+    }
+
+    window.toggleVisibility = function(inputId, iconId) {
+        const input = document.getElementById(inputId);
+        const icon = document.getElementById(iconId);
+        if (!input || !icon) return; 
+        
+        if (input.type === "password") {
+            input.type = "text";
+            icon.className = "fas fa-eye-slash position-absolute top-50 end-0 translate-middle-y me-3 text-primary";
+        } else {
+            input.type = "password";
+            icon.className = "fas fa-eye position-absolute top-50 end-0 translate-middle-y me-3 text-muted";
+        }
+    };
+    
+    async function updateUsername() {
+        const newName = document.getElementById('settingsNewUsername').value.trim();
+        if (!newName) return alert("Please enter a new username");
+        
+        try {
+            const response = await fetch(`${API_URL}/change-username`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ oldUsername: currentUser, newUsername: newName })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                currentUser = data.newUsername;
+                localStorage.setItem('user_name', currentUser);
+                document.getElementById("sidebar-user").innerText = currentUser;
+                document.getElementById("welcomeName").innerText = currentUser;
+                alert(data.message);
+                bootstrap.Modal.getInstance(document.getElementById('accountSettingsModal')).hide();
+            } else { 
+                alert(data.message); 
+            }
+        } catch (err) { 
+            alert("Server error. Check your connection."); 
+        }
+    }
+
+    async function updatePassword() {
+        const oldPassword = document.getElementById('oldPw').value;
+        const newPassword = document.getElementById('newPw').value;
+        
+        if(!oldPassword || !newPassword) return alert("Please fill in both password fields.");
+        
+        try {
+            const response = await fetch(`${API_URL}/change-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: currentUser, oldPassword: oldPassword, newPassword: newPassword })
+            });
+            const data = await response.json();
+            alert(data.message);
+            if(response.ok) {
+                document.getElementById('oldPw').value = "";
+                document.getElementById('newPw').value = "";
+                bootstrap.Modal.getInstance(document.getElementById('accountSettingsModal')).hide();
+            }
+        } catch(err) { 
+            alert("Server error. Check your connection."); 
+        }
+    }
+
+    async function deleteAccount() {
+        const isConfirmed = confirm(`Warning: This will permanently delete the account for ${currentUser}. This action cannot be undone. Proceed?`);
+        if (!isConfirmed) return;
+        
+        try {
+            const response = await fetch(`${API_URL}/delete-account`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: currentUser })
+            });
+            const data = await response.json();
+            if (response.ok) { 
+                alert(data.message); 
+                logout(); 
+            } else { 
+                alert("Error: " + data.message); 
+            }
+        } catch (error) { 
+            alert("Server error. Please try again."); 
+        }
+    }
+
+    function updateSidebarBadgeOnly() {
+        if (!currentUser) return;
+        fetch(`${API_URL}/history?username=${encodeURIComponent(currentUser)}`)
+            .then(res => res.json())
+            .then(history => {
+                const badge = document.getElementById('reportCountBadge');
+                if(badge) badge.innerText = history.length;
+            }).catch(err => console.error("Badge sync failed", err));
+    }
+
+    // --- MAIN REPORT FETCH LOGIC ---
+    async function getRecommendations() {
+        const interest = document.getElementById('interestArea').value.trim();
+        const meanGrade = document.getElementById('meanGradeLetter').value;
+        const points = document.getElementById('aggregatePoints').value;
+        const selects = document.querySelectorAll('.grade-select');
+        
+        let count = 0; 
+        const subjects = {};
+        selects.forEach(s => { 
+            if (s.value) { 
+                count++; 
+                subjects[s.id.replace('grade-', '')] = s.value; 
+            } 
+        });
+
+        if (count !== 7) return alert("Please save a complete profile first!");
+
+        // Switch to the audit tab
+        showSection('audit');
+        
+        document.getElementById('savePdfBtn').style.display = 'none';
+        document.getElementById('resultsContainer').style.display = 'none'; 
+        document.getElementById('auditEmptyState').style.display = 'none';
+        
+        const loader = document.getElementById('aiLoader');
+        loader.style.display = 'block';
+
+        try {
+            const response = await fetch(`${API_URL}/recommend`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ studentName: currentUser, interestArea: interest, meanGrade: meanGrade, aggregatePoints: parseInt(points), subjects: subjects })
+            });
+            
+            const data = await response.json();
+            currentResults = data;
+
+            renderDashboard(data);
+            
+            loader.style.display = 'none';
+            document.getElementById('resultsContainer').style.display = 'block';
+            document.getElementById('savePdfBtn').style.display = 'inline-block';
+            
+            updateSidebarBadgeOnly();
+        } catch (error) {
+            console.error("Fetch Error:", error);
+            loader.style.display = 'none';
+            document.getElementById('auditEmptyState').style.display = 'block';
+            alert("AI Server Error. Ensure your Python backend is running.");
+        }
+    }
+
+    function renderDashboard(data) {
+        let careerUrl = data.career_exploration_url;
+        if (!careerUrl || !careerUrl.startsWith('http')) {
+            const searchStr = (data.ai_role || data.course || "Career") + " job description and daily responsibilities";
+            careerUrl = `https://www.google.com/search?q=${encodeURIComponent(searchStr)}`;
+        }
+
+        document.getElementById('aiCourseTag').innerHTML = `<a href="${careerUrl}" target="_blank" class="text-white text-decoration-none" title="Click to view full job description">${data.ai_role || data.course} <i class="fas fa-external-link-alt fs-6 ms-2 text-warning"></i></a>`;
+        document.getElementById('aiRoleLevelTag').innerText = `Target: ${data.specific_course || "Degree"} (${data.level || "Diploma"})`;
+        
+        const matchBox = document.getElementById('matchReasonBox');
+        if (data.interest_match_reason) {
+            document.getElementById('matchReasonText').innerHTML = `"${data.interest_match_reason}"`;
+            matchBox.style.display = 'block';
+        } else {
+            matchBox.style.display = 'none';
+        }
+
+        const commBox = document.getElementById('communityBox');
+        if(data.popularity || (data.past_roles_found && data.past_roles_found.length > 0)) {
+            document.getElementById('popText').innerHTML = `<strong>Trending:</strong> ${data.popularity || "This is a new field!"}`;
+            
+            if (data.past_roles_found && data.past_roles_found.length > 0) {
+                document.getElementById('pastRolesText').innerHTML = `<em>Past roles suggested to others: ${data.past_roles_found.join(', ')}</em>`;
+            } else {
+                document.getElementById('pastRolesText').innerHTML = `<em>You are the first to get this specific AI recommendation.</em>`;
+            }
+            commBox.style.display = 'block';
+        } else { 
+            commBox.style.display = 'none'; 
+        }
+
+        document.getElementById('aiRoadmapText').innerHTML = (data.ai_roadmap || "").replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+
+        if (data.trending_careers && data.trending_careers.length > 0) {
+            document.getElementById('skillsCloudContainer').style.display = 'block';
+            renderWordCloud(data.trending_careers);
+        } else { 
+            document.getElementById('skillsCloudContainer').style.display = 'none'; 
+        }
+
+        renderUniversities(data.universities);
+        renderAlternatives(data.alternative_careers);
+    }
+
+    // --// --- FULL WORD CLOUD RENDERING (OPTIMIZED & HIGH-DPI) ---
+    function renderWordCloud(trendingCareers) {
+        const canvas = document.getElementById('skillsCloudCanvas');
+        if (!trendingCareers || trendingCareers.length === 0) return;
+
+        const container = document.getElementById('skillsCloudContainer');
+        
+        // 1. HIGH-DPI SCALING: Makes the text ultra-crisp on modern screens
+        const dpr = window.devicePixelRatio || 1;
+        const cssWidth = container.offsetWidth || 800;
+        const cssHeight = 350; // Slightly taller for better word distribution
+        
+        // Set CSS size
+        canvas.style.width = cssWidth + 'px';
+        canvas.style.height = cssHeight + 'px';
+        
+        // Set actual internal canvas resolution (multiplied by screen density)
+        canvas.width = cssWidth * dpr;
+        canvas.height = cssHeight * dpr;
+
+        const maxCount = Math.max(...trendingCareers.map(item => item.count));
+        let wordList = [];
+        
+        // Base weights dynamically scaled by device pixel ratio
+        const baseWeight = 30 * dpr;
+        const maxWeight = 130 * dpr;
+        
+        trendingCareers.forEach(item => {
+            let cleanName = item.career.split('(')[0].trim(); 
+            const ratio = maxCount > 0 ? (item.count / maxCount) : 1;
+            const weight = Math.max(baseWeight, maxWeight * Math.pow(ratio, 1.2)); 
+            wordList.push([cleanName, weight]);
+            
+            let splitWords = cleanName.split(' ');
+            if(splitWords.length > 1) {
+                splitWords.forEach(word => {
+                    if(word.length > 3) {
+                        wordList.push([word.toUpperCase(), Math.floor(Math.random() * 15 * dpr) + (15 * dpr)]); 
+                    }
+                });
+            }
+        });
+
+        const buzzwords = ["Innovation", "Success", "Skill", "Future", "Growth", "Passion", "Impact", "Mastery", "Vision", "Drive", "Focus", "Lead", "Expert"];
+        buzzwords.forEach(bw => {
+            wordList.push([bw, Math.floor(Math.random() * 10 * dpr) + (15 * dpr)]); 
+        });
+
+        const vibrantColors = ['#4f46e5', '#7c3aed', '#f59e0b', '#10b981', '#f43f5e', '#0ea5e9', '#1e293b'];
+
+        // 2. DE-SYNC REFLOW: Wait for DOM animations to finish to prevent "Forced Reflow" warning
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                WordCloud(canvas, { 
+                    list: wordList,
+                    fontFamily: '"Inter", "Impact", "Arial Black", sans-serif',
+                    fontWeight: function(word, weight) {
+                        if (weight >= (90 * dpr)) return '900 italic'; 
+                        if (weight >= (60 * dpr)) return 'bold';        
+                        if (weight >= (35 * dpr)) return 'italic';      
+                        return 'normal';                        
+                    },
+                    color: () => vibrantColors[Math.floor(Math.random() * vibrantColors.length)],
+                    rotateRatio: 0.3,    
+                    rotationSteps: 3, // Increased steps for more dynamic angled words
+                    gridSize: Math.round(8 * dpr), // Dense packing, scaled for crispness
+                    shape: 'square',      
+                    drawOutOfBound: false,
+                    shrinkToFit: true,   
+                    backgroundColor: 'transparent',
+                    
+                    // 3. PACED YIELDING: Forces math to run in micro-batches, preventing 'setTimeout' warnings
+                    wait: 15,             
+                    abortThreshold: 2000
+                });
+            }, 150); // 150ms buffer gives the UI breathing room before starting
+        });
+    }
+
+    function renderUniversities(unis) {
+        const container = document.getElementById('resultsList');
+        container.innerHTML = "";
+        
+        if(unis && unis.length > 0) {
+            unis.forEach(uni => {
+                let reqHtml = "";
+                if(uni.requirements_met && uni.requirements_met.length > 0) {
+                    reqHtml = `
+                        <div class="mt-3 p-2 bg-light rounded border">
+                            <small class="fw-bold text-dark d-block mb-1"><i class="fas fa-check-circle text-success me-1"></i> Requirements Checked:</small>
+                            <table class="table table-sm table-borderless mb-0" style="font-size: 0.8rem;">
+                                <thead class="text-muted border-bottom"><tr><th>Subject</th><th>Required</th><th>Yours</th></tr></thead>
+                                <tbody>`;
+                    
+                    uni.requirements_met.forEach(req => { 
+                        reqHtml += `<tr><td class="py-1">${req.subject}</td><td class="py-1"><span class="badge bg-secondary">${req.required}</span></td><td class="py-1"><span class="fw-bold text-success">${req.attained}</span></td></tr>`; 
+                    });
+                    
+                    reqHtml += `</tbody></table></div>`;
+                }
+
+                const courseName = uni.specific_course || uni.course || uni.course_name;
+                let exactCourseUrl = uni.website_url;
+                
+                if (!exactCourseUrl || exactCourseUrl === '#' || exactCourseUrl.trim() === '') {
+                    const searchQuery = `${uni.name} ${courseName} admission requirements site:ac.ke`;
+                    exactCourseUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
+                }
+
+                container.innerHTML += `
+                    <div class="col-md-6 col-xl-4 mb-4">
+                        <a href="${exactCourseUrl}" target="_blank" class="text-decoration-none text-dark d-block h-100">
+                            <div class="card uni-card h-100 p-4">
+                                <h5 class="fw-bold text-dark mb-2">${uni.name}</h5>
+                                <h6 class="text-primary fw-bold mb-3 border-bottom pb-3"><i class="fas fa-graduation-cap me-2"></i>${courseName}</h6>
+                                <p class="text-muted small mb-0 mt-2"><strong>Why it fits:</strong> ${uni.reason}</p>
+                                ${reqHtml}
+                                <div class="mt-3 text-end small text-primary fw-bold">
+                                    <i class="fas fa-external-link-alt me-1"></i> View Course Page
+                                </div>
+                            </div>
+                        </a>
+                    </div>`;
+            });
+        } else { 
+            container.innerHTML = `<div class="alert alert-warning w-100">No specific institutions mapped. Refer to KUCCPS portal.</div>`; 
+        }
+    }
+
+    function renderAlternatives(alts) {
+        const altContainer = document.getElementById('altCoursesList');
+        altContainer.innerHTML = "";
+        
+        if (alts && alts.length > 0) {
+            alts.forEach(alt => {
+                const safeName = alt.name.replace(/'/g, "\\'");
+                altContainer.innerHTML += `
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 p-3 alt-card shadow-sm border-0 rounded-end-3" onclick="exploreAlternative('${safeName}', this)">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="bg-warning text-dark rounded-circle d-flex justify-content-center align-items-center me-3" style="width: 36px; height: 36px;"><i class="fas fa-lightbulb"></i></div>
+                                <h6 class="fw-bold text-dark mb-0">${alt.name}</h6>
+                            </div>
+                            <p class="text-muted small mb-0" style="margin-left: 52px;">${alt.reason}</p>
+                            <div class="text-end fw-bold text-primary small mt-2 alt-action-text">Generate Roadmap <i class="fas fa-arrow-right"></i></div>
+                        </div>
+                    </div>`;
+            });
+        }
+    }
+
+    function refineRecommendations() { 
+        const refinementText = document.getElementById('refinementInput').value.trim();
+        if(!refinementText) return alert("Please enter some instructions!"); 
+        
+        const originalInterestArea = document.getElementById('interestArea');
+        originalInterestArea.value = originalInterestArea.value + " \n\nUSER REVISION: " + refinementText;
+        document.getElementById('refinementInput').value = "";
+        
+        const points = document.getElementById('aggregatePoints').value;
+        const meanGrade = document.getElementById('meanGradeLetter').value;
+        const subjects = JSON.parse(localStorage.getItem(`${currentUser}_saved_profile`)).subjects;
+        localStorage.setItem(`${currentUser}_saved_profile`, JSON.stringify({ interest: originalInterestArea.value, points, meanGrade, subjects }));
+        
+        getRecommendations();
+    }
+    
+    function exploreAlternative(newCareerName, cardElement) { 
+        if (cardElement) {
+            const actionText = cardElement.querySelector('.alt-action-text');
+            if (actionText) { 
+                actionText.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Generating...`; 
+                actionText.classList.replace('text-primary', 'text-success'); 
+            }
+        }
+        
+        const originalInterestArea = document.getElementById('interestArea');
+        originalInterestArea.value = "I am specifically interested in becoming a " + newCareerName;
+        
+        const points = document.getElementById('aggregatePoints').value;
+        const meanGrade = document.getElementById('meanGradeLetter').value;
+        const subjects = JSON.parse(localStorage.getItem(`${currentUser}_saved_profile`)).subjects;
+        localStorage.setItem(`${currentUser}_saved_profile`, JSON.stringify({ interest: originalInterestArea.value, points, meanGrade, subjects }));
+        
+        getRecommendations();
+    }
+
+    // --- TAB 3: SAVED REPORTS ARCHIVE LOGIC ---
+    async function fetchHistory() {
+        document.getElementById('loadingState').style.display = 'block';
+        document.getElementById('reportsContainer').innerHTML = '';
+        
+        try {
+            const response = await fetch(`${API_URL}/history?username=${encodeURIComponent(currentUser)}`);
+            const data = await response.json();
+            
+            globalReports = data.reverse(); 
+            document.getElementById('reportCountBadge').innerText = globalReports.length;
+            
+            renderInbox(globalReports);
+        } catch (error) {
+            console.error("Error fetching history:", error);
+            document.getElementById('loadingState').innerHTML = `
+                <div class="text-danger"><i class="fas fa-exclamation-triangle fa-2x mb-3"></i><br>Failed to load reports. Please ensure backend is running.</div>
+            `;
+        }
+    }
+
+    function renderInbox(reports) {
+        document.getElementById('loadingState').style.display = 'none';
+        const container = document.getElementById('reportsContainer');
+        
+        if (!reports || reports.length === 0) {
+            container.innerHTML = `
+                <div class="p-5 text-center text-muted">
+                    <i class="fas fa-folder-open fa-3x mb-3 opacity-50"></i>
+                    <h5>Your archive is empty</h5>
+                    <p>Run a new analysis to see your saved reports here.</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = reports.map((item, index) => {
+            const dateStr = item.timestamp ? new Date(item.timestamp).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Unknown Date';
+            const aiResults = item.ai_response || item;
+            const courseName = aiResults.specific_course || aiResults.course || 'Career Recommendation';
+            const level = aiResults.level || 'Degree';
+            const role = aiResults.ai_role || 'General Path';
+            const uniCount = aiResults.universities ? aiResults.universities.length : 0;
+
+            return `
+                <div class="inbox-row" onclick="viewReport(${index})">
+                    <div class="star-col"><i class="far fa-star"></i></div>
+                    <div class="course-col">
+                        <div class="course-title">${courseName}</div>
+                        <div class="course-subtitle">
+                            Target Role: <strong>${role}</strong> • Matches ${uniCount} Universities
+                        </div>
+                    </div>
+                    <div class="level-col">
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill level-badge">${level}</span>
+                    </div>
+                    <div class="date-col">${dateStr}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function viewReport(index) {
+        currentViewedReport = globalReports[index];
+        const data = currentViewedReport.ai_response || currentViewedReport;
+        
+        const modal = new bootstrap.Modal(document.getElementById('reportViewModal'));
+        
+        let reasonHtml = "";
+        if (data.interest_match_reason) {
+            reasonHtml = `
+                <div class="p-4 mb-4 mt-3 shadow-sm" style="background-color: #f0fdf4; border-left: 5px solid #10b981; border-radius: 12px;">
+                    <h6 class="fw-bold mb-3 text-success text-uppercase" style="letter-spacing: 0.5px; font-size: 0.85rem;"><i class="fas fa-bullseye me-2"></i>Why this fits your passion</h6>
+                    <p class="mb-0" style="line-height: 1.75; font-size: 1.15rem; font-family: 'Georgia', serif; color: #334155; font-style: italic;">"${data.interest_match_reason}"</p>
+                </div>
+            `;
+        }
+
+        let roadmapHtml = data.ai_roadmap 
+            ? data.ai_roadmap.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>') 
+            : "No specific action plan saved.";
+
+        let uniHtml = "";
+        if (data.universities && data.universities.length > 0) {
+            uniHtml = `<h6 class="fw-bold mt-4"><i class="fas fa-university me-2 text-primary"></i>Top Institutional Matches:</h6><ul class="list-group mb-3">`;
+            data.universities.slice(0, 3).forEach(u => {
+                uniHtml += `<li class="list-group-item bg-light border-0 mb-1 rounded"><strong>${u.name}</strong><br><small class="text-muted">${u.reason}</small></li>`;
+            });
+            uniHtml += `</ul>`;
+        }
+
+        document.getElementById('modalContent').innerHTML = `
+            <div class="mb-3">
+                <span class="badge bg-warning text-dark mb-2 px-3 py-2 rounded-pill"><i class="fas fa-star me-1"></i> SAVED MATCH</span>
+                <h3 class="fw-bold text-dark mb-1">${data.specific_course || data.course}</h3>
+                <h6 class="text-secondary">Target Role: ${data.ai_role}</h6>
+            </div>
+            
+            ${reasonHtml}
+            
+            <hr class="text-muted my-4">
+            <h6 class="fw-bold text-dark mb-3"><i class="fas fa-map-signs text-primary me-2"></i> AI Action Plan</h6>
+            <div class="bg-white p-4 rounded-3 border shadow-sm text-secondary" style="line-height: 1.8; font-size: 0.95rem;">
+                ${roadmapHtml}
+            </div>
+            ${uniHtml}
+        `;
+        
+        modal.show();
+    }
+
+    async function deleteCurrentReport() {
+        if (!currentViewedReport) return;
+        
+        const isConfirmed = confirm("Are you sure you want to permanently delete this report? This action cannot be undone.");
+        if (!isConfirmed) return;
+
+        const btn = document.querySelector('button[onclick="deleteCurrentReport()"]');
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Deleting...`;
+        btn.disabled = true;
+
+        try {
+            const response = await fetch(`${API_URL}/delete-report`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: currentUser,
+                    timestamp: currentViewedReport.timestamp
+                })
+            });
+
+            if (response.ok) {
+                const modalInstance = bootstrap.Modal.getInstance(document.getElementById('reportViewModal'));
+                modalInstance.hide();
+                fetchHistory();
+            } else {
+                alert("Failed to delete report. Please try again.");
+            }
+        } catch (error) {
+            console.error("Delete Error:", error);
+            alert("Server error. Please ensure your backend is running.");
+        } finally {
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+        }
+    }
+
+    // --- PDF GENERATION ENGINE ---
+
+    // 1. PDF for the LIVE Audit tab
+    function buildPDFDocument(data) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const studentName = currentUser || "Student";
+        const meanGrade = document.getElementById('meanGradeLetter').value || "N/A";
+        const aggPoints = document.getElementById('aggregatePoints').value || "N/A";
+
+        doc.setFillColor(79, 70, 229); 
+        doc.rect(0, 0, 210, 40, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.text("KUCCPS Smart Placement Report", 14, 25);
+        doc.setFontSize(10);
+        doc.text(`Generated: ${new Date().toLocaleDateString()}`, 150, 25);
+
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(12);
+        doc.text(`Name: ${studentName}`, 14, 50);
+        doc.text(`Mean Grade: ${meanGrade} | Points: ${aggPoints}`, 14, 57);
+
+        let currentY = 70; 
+        doc.setFillColor(240, 245, 255);
+        doc.rect(14, currentY, 182, 30, 'F');
+        doc.setFontSize(14);
+        doc.setTextColor(0, 51, 102);
+        const mainPath = data.specific_course || data.course || data.career_path || data.ai_role;
+        doc.text(`Recommended Path: ${mainPath} (${data.level || "Degree"})`, 18, currentY + 12);
+        doc.setFontSize(12);
+        doc.text(`Target Role: ${data.ai_role}`, 18, currentY + 22);
+        currentY += 40;
+
+        if (data.interest_match_reason) {
+            doc.setFontSize(11);
+            doc.setTextColor(16, 185, 129); 
+            doc.setFont("helvetica", "bold");
+            doc.text("Why this fits:", 14, currentY);
+            
+            doc.setTextColor(60, 60, 60);
+            doc.setFont("helvetica", "italic");
+            const splitReason = doc.splitTextToSize(`"${data.interest_match_reason}"`, 182);
+            doc.text(splitReason, 14, currentY + 6);
+            currentY += 12 + (splitReason.length * 5); 
+        } else {
+            currentY += 5;
+        }
+
+        if (data.ai_roadmap) {
+            doc.setFontSize(13);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont("helvetica", "bold");
+            doc.text("Your Action Plan:", 14, currentY);
+            let cleanRoadmap = data.ai_roadmap.replace(/<br\s*[\/]?>/gi, "\n").replace(/<li>/gi, "\n • ").replace(/<\/li>/gi, "").replace(/<[^>]*>?/gm, "").replace(/&nbsp;/g, " ").trim();
+            doc.setFontSize(11);
+            doc.setTextColor(60, 60, 60);
+            doc.setFont("helvetica", "normal");
+            const splitRoadmap = doc.splitTextToSize(cleanRoadmap, 182);
+            doc.text(splitRoadmap, 14, currentY + 8);
+            currentY += 15 + (splitRoadmap.length * 5); 
+        }
+
+        if (data.universities && data.universities.length > 0) {
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont("helvetica", "bold"); 
+            doc.text("Verified Institutional Pathways:", 14, currentY);
+            doc.setFont("helvetica", "normal"); 
+            const tableData = data.universities.map(u => {
+                const reqSummary = u.requirements_met ? u.requirements_met.map(r => `${r.subject}: ${r.attained} (Req: ${r.required})`).join("\n") : "Standard Entry Met";
+                return [u.name, u.specific_course || u.course || u.course_name || "Recommended Degree", reqSummary, u.reason];
+            });
+            doc.autoTable({ startY: currentY + 5, head: [['Institution', 'Verified Course', 'Requirement Check', 'Reason']], body: tableData, theme: 'grid', headStyles: { fillColor: [79, 70, 229] }, columnStyles: { 0: { cellWidth: 40 }, 2: { cellWidth: 40 } }, styles: { fontSize: 8, cellPadding: 3 } });
+        }
+        return doc;
+    }
+
+    function downloadPDF() {
+        if (!currentResults) { alert("Please run the analysis first!"); return; }
+        const doc = buildPDFDocument(currentResults);
+        const fileName = `${currentUser.replace(/\s+/g, '_')}_Placement_Report.pdf`;
+        doc.save(fileName);
+    }
+
+    // 2. PDF for the SAVED Reports Tab
+    function buildSavedPDFDocument(aiResults, fullLogItem) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const studentName = currentUser || "Student";
+        const aggPoints = fullLogItem.points || aiResults.validated_points || "Retrieved from Archive";
+
+        doc.setFillColor(79, 70, 229); 
+        doc.rect(0, 0, 210, 40, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.text("KUCCPS Smart Placement Report", 14, 25);
+        doc.setFontSize(10);
+        
+        const dateText = fullLogItem.timestamp ? new Date(fullLogItem.timestamp).toLocaleDateString() : new Date().toLocaleDateString();
+        doc.text(`Archive Date: ${dateText}`, 150, 25);
+
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(12);
+        doc.text(`Name: ${studentName}`, 14, 50);
+        doc.text(`Aggregate Points: ${aggPoints}`, 14, 57);
+
+        let currentY = 70; 
+        doc.setFillColor(240, 245, 255);
+        doc.rect(14, currentY, 182, 30, 'F');
+        doc.setFontSize(14);
+        doc.setTextColor(0, 51, 102);
+        const mainPath = aiResults.specific_course || aiResults.course || aiResults.career_path || aiResults.ai_role;
+        doc.text(`Recommended Path: ${mainPath} (${aiResults.level || "Degree"})`, 18, currentY + 12);
+        doc.setFontSize(12);
+        doc.text(`Target Role: ${aiResults.ai_role}`, 18, currentY + 22);
+        currentY += 35;
+
+        if (aiResults.interest_match_reason) {
+            doc.setFontSize(11);
+            doc.setTextColor(16, 185, 129); 
+            doc.setFont("helvetica", "bold");
+            doc.text("Why this fits:", 14, currentY);
+            
+            doc.setTextColor(60, 60, 60);
+            doc.setFont("helvetica", "italic");
+            const splitReason = doc.splitTextToSize(`"${aiResults.interest_match_reason}"`, 182);
+            doc.text(splitReason, 14, currentY + 6);
+            currentY += 12 + (splitReason.length * 5); 
+        } else {
+            currentY += 5;
+        }
+
+        if (aiResults.ai_roadmap) {
+            doc.setFontSize(13);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont("helvetica", "bold");
+            doc.text("Your Action Plan:", 14, currentY);
+            let cleanRoadmap = aiResults.ai_roadmap.replace(/<br\s*[\/]?>/gi, "\n").replace(/<li>/gi, "\n • ").replace(/<\/li>/gi, "").replace(/<[^>]*>?/gm, "").replace(/&nbsp;/g, " ").trim();
+            doc.setFontSize(11);
+            doc.setTextColor(60, 60, 60);
+            doc.setFont("helvetica", "normal");
+            const splitRoadmap = doc.splitTextToSize(cleanRoadmap, 182);
+            doc.text(splitRoadmap, 14, currentY + 8);
+            currentY += 15 + (splitRoadmap.length * 5); 
+        }
+
+        if (aiResults.universities && aiResults.universities.length > 0) {
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont("helvetica", "bold"); 
+            doc.text("Verified Institutional Pathways:", 14, currentY);
+            doc.setFont("helvetica", "normal"); 
+            const tableData = aiResults.universities.map(u => {
+                const reqSummary = u.requirements_met ? u.requirements_met.map(r => `${r.subject}: ${r.attained} (Req: ${r.required})`).join("\n") : "Standard Entry Met";
+                return [u.name, u.specific_course || u.course || u.course_name || "Recommended Degree", reqSummary, u.reason];
+            });
+            doc.autoTable({ startY: currentY + 5, head: [['Institution', 'Verified Course', 'Requirement Check', 'Reason']], body: tableData, theme: 'grid', headStyles: { fillColor: [79, 70, 229] }, columnStyles: { 0: { cellWidth: 40 }, 2: { cellWidth: 40 } }, styles: { fontSize: 8, cellPadding: 3 } });
+        }
+
+        let finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 15 : currentY + 20;
+        if (finalY > 250) { doc.addPage(); finalY = 20; }
+
+        if (aiResults.alternative_careers && aiResults.alternative_careers.length > 0) {
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont("helvetica", "bold");
+            doc.text("Alternative Career Pathways:", 14, finalY);
+            doc.setFont("helvetica", "normal");
+            const altTableData = aiResults.alternative_careers.map(alt => [alt.name, alt.reason]);
+            doc.autoTable({ startY: finalY + 5, head: [['Backup Career', 'Why this is a good fit']], body: altTableData, theme: 'grid', headStyles: { fillColor: [255, 193, 7], textColor: [0, 0, 0] }, styles: { fontSize: 9, cellPadding: 4 } });
+        }
+        return doc;
+    }
+
+    function downloadSavedPDF() {
+        if (!currentViewedReport) { alert("Error loading report data."); return; }
+        const aiResults = currentViewedReport.ai_response || currentViewedReport;
+        
+        const btn = document.querySelector('button[onclick="downloadSavedPDF()"]');
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Generating...`;
+        btn.disabled = true;
+        
+        setTimeout(() => {
+            const doc = buildSavedPDFDocument(aiResults, currentViewedReport);
+            const studentName = currentUser || "Student";
+            const fileName = `${studentName.replace(/\s+/g, '_')}_Saved_Placement_Report.pdf`;
+            doc.save(fileName);
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+        }, 300);
+    }
+
+    // --- EVENT LISTENERS ---
+    document.getElementById('profile').addEventListener('keypress', function(event) {
+        if (event.key === 'Enter') {
+            if (document.getElementById('profileFormContainer').style.display !== 'none') {
+                event.preventDefault(); 
+                const selects = Array.from(document.querySelectorAll('.grade-select'));
+                const filledCount = selects.filter(s => s.value).length;
+                const saveBtn = document.getElementById('saveProfileBtn');
+                if (filledCount === 7) { 
+                    if (saveBtn && !saveBtn.disabled) previewProfile(); 
+                }
+            }
+        }
+    });
+
+    document.getElementById('refinementInput').addEventListener('keypress', function(event) {
+        if (event.key === 'Enter') { 
+            event.preventDefault(); 
+            refineRecommendations(); 
+        }
+    });// --- PWA SERVICE WORKER REGISTRATION ---
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+            .then(registration => {
+                console.log('✅ Service Worker registered successfully with scope:', registration.scope);
+            })
+            .catch(error => {
+                console.error('❌ Service Worker registration failed:', error);
+            });
+    });
+}
+</script>
+
+</body>
+</html>
