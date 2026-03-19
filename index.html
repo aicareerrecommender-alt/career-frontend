@@ -172,30 +172,33 @@
     transition: all 0.3s ease-in-out; /* Makes the sliding smooth */
 }
 
+/* --- BULLETPROOF MOBILE RESPONSIVENESS --- */
 @media (max-width: 768px) {
+    /* Force the sidebar out of the document flow and off-screen */
     .sidebar {
-        position: fixed;
-        top: 0;
-        left: -100%; /* Hide completely off-screen by default */
+        position: fixed !important; 
+        top: 0 !important;
+        left: -100% !important; /* Hides it off the left edge */
         width: 280px !important;
         height: 100vh !important;
-        z-index: 1000;
-        display: flex !important; /* Keeps Bootstrap formatting */
+        z-index: 1050 !important; /* Forces it above everything else */
+        display: flex !important;
+        transition: left 0.3s ease-in-out !important;
     }
     
-    /* When this class is added, the sidebar slides in */
+    /* When the toggle button is clicked, slide it to 0 (visible) */
     .sidebar.show-mobile {
-        left: 0 !important;
+        left: 0 !important; 
         box-shadow: 4px 0 15px rgba(0,0,0,0.5) !important;
     }
 
+    /* Ensure main content takes the full screen */
     .main-content {
         width: 100% !important;
         margin-left: 0 !important;
         padding: 15px !important;
     }
 }
-
     </style><link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1e293b">
 <link rel="apple-touch-icon" href="icon-192.png">
