@@ -1595,6 +1595,40 @@ async function sendReportToEmail(reportToSend = currentResults, buttonElement = 
             alert("🚨 Network error during verification. Please try again.");
         }
     }
+    // ==========================================
+// 📱 MOBILE SIDEBAR CONTROLS (BULLETPROOF)
+// ==========================================
+function toggleSidebar() {
+    const sidebar = document.getElementById('main-sidebar');
+    const overlay = document.getElementById('mobile-overlay');
+    
+    // Check if it's currently open
+    const isOpen = sidebar.classList.contains('show-mobile');
+    
+    if (isOpen) {
+        // Close it
+        sidebar.classList.remove('show-mobile');
+        sidebar.style.setProperty('transform', 'translateX(-100%)');
+        overlay.style.display = 'none';
+    } else {
+        // Open it (Forcing display to flex to override the HTML inline style)
+        sidebar.classList.add('show-mobile');
+        sidebar.style.setProperty('display', 'flex', 'important');
+        sidebar.style.setProperty('transform', 'translateX(0%)');
+        overlay.style.display = 'block';
+    }
+}
+
+function closeSidebarOnMobile() {
+    if (window.innerWidth <= 768) {
+        const sidebar = document.getElementById('main-sidebar');
+        const overlay = document.getElementById('mobile-overlay');
+        
+        sidebar.classList.remove('show-mobile');
+        sidebar.style.setProperty('transform', 'translateX(-100%)');
+        overlay.style.display = 'none';
+    }
+}
     // --- PWA SERVICE WORKER REGISTRATION ---
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
