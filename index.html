@@ -167,6 +167,34 @@
             .main-content { margin-left: 0; padding: 20px; }
             .date-col, .level-col { display: none; }
         } 
+        /* --- MOBILE RESPONSIVENESS & SLIDING SIDEBAR --- */
+.sidebar {
+    transition: all 0.3s ease-in-out; /* Makes the sliding smooth */
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: -100%; /* Hide completely off-screen by default */
+        width: 280px !important;
+        height: 100vh !important;
+        z-index: 1000;
+        display: flex !important; /* Keeps Bootstrap formatting */
+    }
+    
+    /* When this class is added, the sidebar slides in */
+    .sidebar.show-mobile {
+        left: 0 !important;
+        box-shadow: 4px 0 15px rgba(0,0,0,0.5) !important;
+    }
+
+    .main-content {
+        width: 100% !important;
+        margin-left: 0 !important;
+        padding: 15px !important;
+    }
+}
 
     </style><link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1e293b">
@@ -175,22 +203,22 @@
 <body>
    
 <div id="main-app">
-    <div class="sidebar d-flex flex-column p-4 shadow-lg">
+   <div id="main-sidebar" class="sidebar d-flex flex-column p-4 shadow-lg" style="display: none !important;"></div>
         <h4 class="fw-bold mb-4 text-white"><i class="fas fa-brain me-2 text-info"></i>CareerPath AI</h4>
         
-        <ul class="nav flex-column mb-auto">
+      <ul class="nav flex-column mb-auto">
             <li class="nav-item">
-                <a href="#" class="nav-link active" onclick="showSection('profile', event)">
+                <a href="#" class="nav-link active" onclick="showSection('profile', event); closeSidebarOnMobile();">
                     <i class="fas fa-user-edit me-3"></i>Profile Setup
                 </a>
             </li>
             <li class="nav-item">
-                <a href="#" class="nav-link" onclick="showSection('audit', event)">
+                <a href="#" class="nav-link" onclick="showSection('audit', event); closeSidebarOnMobile();">
                     <i class="fas fa-chart-pie me-3"></i>Intelligence Report
                 </a>
             </li>
             <li class="nav-item mt-2">
-                <a href="#" class="nav-link d-flex justify-content-between align-items-center" onclick="showSection('reports', event); fetchHistory();">
+                <a href="#" class="nav-link d-flex justify-content-between align-items-center" onclick="showSection('reports', event); fetchHistory(); closeSidebarOnMobile();">
                     <span><i class="fas fa-folder-open me-3"></i>Saved Reports</span>
                     <span class="badge bg-info rounded-pill text-dark" id="reportCountBadge">0</span>
                 </a>
@@ -212,8 +240,16 @@
         </div>
     </div>
 
-    <div class="main-content" id="dashboard-content">
-        
+ <div class="main-content" id="dashboard-content" style="display: none;">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4 d-md-none bg-white p-3 rounded-3 shadow-sm">
+        <h5 class="fw-bold text-dark mb-0"><i class="fas fa-brain text-info me-2"></i>CareerPath AI</h5>
+        <button class="btn btn-outline-primary border-0" onclick="toggleSidebar()">
+            <i class="fas fa-bars fa-lg"></i>
+        </button>
+    </div>
+    
+    <div id="mobile-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 999;" onclick="toggleSidebar()"></div>       
         <div id="profile" class="content-section active">
             
             <div id="profileFormContainer">
@@ -521,13 +557,20 @@
     };
     
     const gradesList = Object.keys(gradesMap);
-
-    window.onload = () => {
+window.onload = () => {
+        // 1. Check if they are logged in
         const savedUser = localStorage.getItem('user_name');
         if (!savedUser) { 
             window.location.href = "login.html"; 
-            return; 
+            return; // Stops here if they aren't logged in
         }
+        
+        // 2. REVEAL THE DASHBOARD AND SIDEBAR HERE!
+        // Because they passed the security check, we make the site visible
+        document.getElementById('dashboard-content').style.display = 'block';
+        document.getElementById('main-sidebar').style.setProperty('display', 'flex', 'important');
+
+        // 3. Load the rest of the user data
         currentUser = savedUser;
         document.getElementById("sidebar-user").innerText = currentUser;
         document.getElementById("welcomeName").innerText = currentUser;
@@ -569,6 +612,28 @@
                 count++; 
             }
         });
+        // Toggles the sidebar open and closed on mobile
+function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('mobile-overlay');
+    
+    sidebar.classList.toggle('show-mobile');
+    
+    // Show or hide the dark background overlay
+    if (sidebar.classList.contains('show-mobile')) {
+        overlay.style.display = 'block';
+    } else {
+        overlay.style.display = 'none';
+    }
+}
+
+// Automatically close the sidebar when a user clicks a link on mobile
+function closeSidebarOnMobile() {
+    if (window.innerWidth <= 768) {
+        document.querySelector('.sidebar').classList.remove('show-mobile');
+        document.getElementById('mobile-overlay').style.display = 'none';
+    }
+}
         
         document.getElementById('aggregatePointsDisplay').innerText = total;
         document.getElementById('aggregatePoints').value = total;

@@ -397,8 +397,14 @@
         // ==========================================
         async function handleCredentialResponse(response) {
             const googleToken = response.credential;
-            const btn = document.querySelector('.g_id_signin'); // Optional: Add loading state
+            const btn = document.querySelector('.g_id_signin'); 
+            const messageBox = document.getElementById('loginMessage');
             
+            // Tell the user to wait in case Render is asleep
+            if (messageBox) {
+                messageBox.innerText = "Connecting to server... (May take 50s if waking up)";
+            }
+
             try {
                 const res = await fetch(`${API_URL}/google-login`, {
                     method: 'POST',
@@ -409,18 +415,27 @@
                 const data = await res.json();
                 
                 if (res.ok) {
-                    // Save user data (matching your existing auth flow)
+                    // Save user data
                     localStorage.setItem('user_name', data.name);
                     localStorage.setItem('user_email', data.email);
                     window.location.href = "index.html"; 
                 } else {
-                    document.getElementById('loginMessage').innerText = "Google login failed: " + data.message;
+                    if (messageBox) {
+                        messageBox.innerText = "Google login failed: " + data.message;
+                    }
                 }
             } catch (err) {
                 console.error("Error connecting to server:", err);
-                document.getElementById('loginMessage').innerText = "Could not connect to the server.";
+                if (messageBox) {
+                    messageBox.innerText = "Login error: Could not connect to the server. (It might be waking up!)";
+                }
+            } finally {
+                // ALWAYS run this, no matter if it succeeded or failed!
+                // If you add a custom loading spinner later, you can turn it off here.
+                console.log("Login attempt finished.");
             }
         }
+        
     </script>
 </body>
 </html>
