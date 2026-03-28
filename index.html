@@ -1105,41 +1105,77 @@ function closeSidebarOnMobile() {
             <h2 class="fw-bold">Analyzing Your Career Path...</h2>
             <p class="text-secondary">Matching grades with university requirements. Please wait...</p>
         `;
-
-        try {
-            // 3. Call the Python backend
+try {
+            console.group("🚀 Recommendation Process Trace");
+            console.log("%cStep 1: Sending Grades to Backend...", "color: #3498db; font-weight: bold;");
+            
+            // NOTE: Change API_URL to BACKEND_URL if that's what your code uses
             const response = await fetch(`${API_URL}/recommend`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(userData)
+                body: JSON.stringify(userData) // NOTE: use JSON.stringify(grades) if your code uses 'grades' instead of 'userData'
             });
 
+            // CHECKPOINT 1: Network/Server Status
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || "Server error");
+                console.error(`❌ FAILURE AT STEP 2: Server responded with ${response.status}`);
+                throw new Error(`Backend Offline (${response.status})`);
             }
+            console.log("%c✅ Step 2: Connection Established", "color: #27ae60;");
 
             const data = await response.json();
+            
+            // CHECKPOINT 2: Math Engine Check
+            if (data.points === undefined) {
+                console.warn("⚠️ FAILURE AT STEP 3: Math Engine returned no points.");
+            } else {
+                console.log(`%c✅ Step 3: Math Engine Success (${data.points}/84)`, "color: #27ae60;");
+            }
+
+            // CHECKPOINT 3: Scraper/University Link Check
+            if (!data.result || data.result.includes("duckduckgo") || data.result.includes("google")) {
+                console.warn("❌ FAILURE AT STEP 4: Scraper could not find direct university link. Falling back to search URL.");
+                console.log("🔗 URL Received:", data.result);
+            } else {
+                console.log(`%c✅ Step 4: Scraper Found Direct Link: ${data.result}`, "color: #27ae60;");
+            }
+
+            // CHECKPOINT 4: AI Alternatives Check
+            if (!data.alternatives || data.alternatives.length === 0) {
+                console.error("❌ FAILURE AT STEP 5: AI Engine failed to generate alternative careers.");
+            } else {
+                console.log("%c✅ Step 5: AI Alternatives Generated Successfully", "color: #27ae60;");
+            }
+
+            console.groupEnd();
+
+            // Final check before updating UI
+            if (!data) throw new Error("Data object is empty");
 
             // 4. Update the UI with results
             document.getElementById('aiLoader').style.display = 'none';
             document.getElementById('resultsContainer').style.display = 'block';
             
-            currentResults = data; 
-            renderDashboard(data);
+            // Make sure these match your existing variables!
+            currentResults = data;
+            renderDashboard(data); // Call your function to update the DOM
             
             document.getElementById('savePdfBtn').style.display = 'inline-block';
             document.getElementById('emailReportBtn').style.display = 'inline-block';
 
-            // 5. 💾 THIS IS THE MAGIC LINE THAT SAVES THE REPORT!
-            saveReportToHistory(data);
+            // 5. 💾 Save report
+            if (typeof saveReportToHistory === "function") {
+                saveReportToHistory(data);
+            }
 
         } catch (error) {
-            console.error("Error generating report:", error);
+            console.groupEnd(); // Ensure group closes on error
+            console.error("%c🚨 CRITICAL ERROR:", "color: #e74c3c; font-weight: bold;", error.message);
+            
             document.getElementById('aiLoader').innerHTML = `
                 <div class="alert alert-danger mx-auto" style="max-width: 500px;">
                     <h4 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i>Analysis Failed</h4>
-                    <p class="mb-0">Could not connect to the AI engine. Please ensure your Python server is running and try again.</p>
+                    <p class="mb-0">Could not complete the recommendation process: ${error.message}</p>
                 </div>
             `;
         }
