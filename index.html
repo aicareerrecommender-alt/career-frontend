@@ -1139,13 +1139,14 @@ try {
             } else {
                 console.log(`%c✅ Step 4: Scraper Found Direct Link: ${data.result}`, "color: #27ae60;");
             }
+            
+if (!data.alternative_careers || data.alternative_careers.length === 0) {
+    console.error("❌ FAILURE AT STEP 5: AI Engine failed to generate alternative careers.");
+} else {
+    console.log("%c✅ Step 5: AI Alternatives Generated Successfully", "color: #27ae60;");
+}
 
-            // CHECKPOINT 4: AI Alternatives Check
-            if (!data.alternatives || data.alternatives.length === 0) {
-                console.error("❌ FAILURE AT STEP 5: AI Engine failed to generate alternative careers.");
-            } else {
-                console.log("%c✅ Step 5: AI Alternatives Generated Successfully", "color: #27ae60;");
-            }
+            
 
             console.groupEnd();
 
@@ -1475,23 +1476,6 @@ try {
         // --- ALTERNATIVE CAREERS TABLE ---
         let finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 15 : currentY + 20;
         if (finalY > 250) { doc.addPage(); finalY = 20; }
-
-        if (data.alternative_careers && data.alternative_careers.length > 0) {
-            doc.setFontSize(12);
-            doc.setTextColor(0, 0, 0);
-            doc.setFont("helvetica", "bold");
-            doc.text("Alternative Career Pathways:", 14, finalY);
-            doc.setFont("helvetica", "normal");
-            const altTableData = data.alternative_careers.map(alt => [alt.name, alt.reason]);
-            doc.autoTable({ 
-                startY: finalY + 5, 
-                head: [['Backup Career', 'Why this is a good fit']], 
-                body: altTableData, 
-                theme: 'grid', 
-                headStyles: { fillColor: [255, 193, 7], textColor: [0, 0, 0] }, 
-                styles: { fontSize: 9, cellPadding: 4 } 
-            });
-        }
         
         return doc;
     }
