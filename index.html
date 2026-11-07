@@ -1464,6 +1464,21 @@
     let dataConsent = { personalization: false, improvement: false, recorded: false };
     let initialConsentPending = false;
     let initialConsentResolver = null;
+
+    function updateCareerChatViewportHeight() {
+        if (!window.matchMedia("(max-width: 768px)").matches) {
+            document.documentElement.style.removeProperty("--career-chat-viewport-height");
+            return;
+        }
+        const viewportHeight = window.visualViewport?.height || window.innerHeight;
+        document.documentElement.style.setProperty(
+            "--career-chat-viewport-height",
+            `${Math.round(viewportHeight)}px`
+        );
+    }
+
+    window.addEventListener("resize", updateCareerChatViewportHeight);
+    window.visualViewport?.addEventListener("resize", updateCareerChatViewportHeight);
     
     const careerGradeSubjects = [
         { key: "Math", label: "Maths" },
