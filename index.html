@@ -614,7 +614,10 @@
 
         .career-chat-message.user {
             align-self: flex-end;
-            border-bottom-right-radius: 5px;
+            border: 0;
+            background: transparent;
+            box-shadow: none;
+            border-radius: 0;
         }
 
         .career-chat-suggestions {
@@ -809,12 +812,43 @@
         }
 
         .career-chat-send-button.is-thinking {
-            width: auto;
-            flex-basis: auto;
-            gap: 8px;
-            padding: 0 12px;
-            white-space: nowrap;
-            font-size: 0.85rem;
+            width: 46px;
+            flex-basis: 46px;
+            padding: 0;
+        }
+
+        .career-chat-loading-dots {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .career-chat-loading-dots span {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: career-chat-dot-pulse 1s ease-in-out infinite;
+        }
+
+        .career-chat-loading-dots span:nth-child(2) {
+            animation-delay: 0.15s;
+        }
+
+        .career-chat-loading-dots span:nth-child(3) {
+            animation-delay: 0.3s;
+        }
+
+        @keyframes career-chat-dot-pulse {
+            0%, 60%, 100% {
+                opacity: 0.35;
+                transform: translateY(0);
+            }
+            30% {
+                opacity: 1;
+                transform: translateY(-3px);
+            }
         }
 
         .career-chat-send-button:hover {
@@ -960,8 +994,8 @@
             }
 
             .career-chat-composer > .d-flex > .career-chat-send-button.is-thinking {
-                width: auto !important;
-                padding: 0 10px;
+                width: 40px !important;
+                padding: 0;
             }
 
             #careerChatControls {
@@ -1283,6 +1317,12 @@
 
                 <h4 class="fw-bold text-dark mb-3"><i class="fas fa-university me-2 text-primary"></i>University Course Pathways</h4>
                 <div class="row mb-5" id="resultsList"></div>
+                <div class="card border-0 shadow-sm mb-5 rounded-4" id="admissionRequirementsPanel" style="display:none;">
+                    <div class="card-header bg-white border-bottom pt-4 pb-3 px-4 rounded-top-4">
+                        <h5 class="fw-bold text-dark mb-0"><i class="fas fa-list-check me-2 text-primary"></i>Subject requirements from KUCCPS</h5>
+                    </div>
+                    <div class="card-body p-4" id="admissionRequirementsList"></div>
+                </div>
 
                 <div class="mt-4 border-top pt-4">
                     <h5 class="fw-bold"><i class="fas fa-shield-alt text-warning me-2"></i> Alternative Career Paths</h5>
@@ -1459,6 +1499,7 @@
     let globalReports = []; 
     let currentViewedReport = null;
     let careerChatState = null;
+    let careerChatRecommendationPending = false;
     let careerChatAttachments = [];
     let careerSpeechRecognition = null;
     let dataConsent = { personalization: false, improvement: false, recorded: false };
@@ -2493,19 +2534,22 @@ window.onload = async () => {
         const sendButton = document.getElementById('careerChatSendButton');
         const isThinking = Boolean(careerChatState.pending);
         const sendActionLabel = isThinking
-            ? "CareerPath AI is thinking"
+            ? "CareerPath AI is responding"
             : isGradeStep
                 ? "Add grade"
                 : "Send message";
         sendButton.replaceChildren();
-        const sendIcon = document.createElement('i');
-        sendIcon.className = isThinking ? "fas fa-spinner fa-spin" : "fas fa-arrow-up";
-        sendIcon.setAttribute('aria-hidden', "true");
-        sendButton.appendChild(sendIcon);
         if (isThinking) {
-            const thinkingLabel = document.createElement('span');
-            thinkingLabel.textContent = "Thinking…";
-            sendButton.appendChild(thinkingLabel);
+            const loadingDots = document.createElement('span');
+            loadingDots.className = "career-chat-loading-dots";
+            loadingDots.setAttribute('aria-hidden', "true");
+            loadingDots.innerHTML = "<span></span><span></span><span></span>";
+            sendButton.appendChild(loadingDots);
+        } else {
+            const sendIcon = document.createElement('i');
+            sendIcon.className = "fas fa-arrow-up";
+            sendIcon.setAttribute('aria-hidden', "true");
+            sendButton.appendChild(sendIcon);
         }
         sendButton.classList.toggle("is-thinking", isThinking);
         sendButton.disabled = isThinking;
@@ -2533,8 +2577,10 @@ window.onload = async () => {
         document.getElementById('careerChatContinueButton').textContent = "Share grades (optional)";
         document.getElementById('careerChatContinueText').textContent = shouldOfferGrades
             ? "If you have exam grades, share them to check your eligibility. Or explore courses and their entry requirements now."
-            : "";
-        document.getElementById('careerChatExploreButton').style.display = shouldOfferGrades ? "inline-block" : "none";
+            : canExplore
+                ? "Tell me about your interests or explore an area to see courses and entry requirements."
+                : "";
+        document.getElementById('careerChatExploreButton').style.display = canExplore ? "inline-block" : "none";
         document.getElementById('careerChatContinueButton').style.display = shouldOfferGrades ? "inline-block" : "none";
         document.getElementById('careerChatContinueButton').disabled = Boolean(careerChatState.pending);
         const hasSavedProfile = dataConsent.personalization
@@ -2752,7 +2798,7 @@ window.onload = async () => {
         document.getElementById('careerChatSendButton').disabled = true;
         document.getElementById('careerChatVoiceButton').disabled = true;
         document.getElementById('careerChatAttachButton').disabled = true;
-        document.getElementById('careerChatVoiceStatus').textContent = "Thinking…";
+        document.getElementById('careerChatVoiceStatus').textContent = "";
         document.getElementById('careerChatSendButton').classList.add('is-thinking');
         document.getElementById('careerChatMessages').scrollTop = document.getElementById('careerChatMessages').scrollHeight;
 
@@ -3399,6 +3445,7 @@ window.onload = async () => {
             document.getElementById('skillsCloudContainer').style.display = 'none'; 
         }
 
+        renderAdmissionRequirements(data.admission_requirements);
         renderUniversities(data.universities);
         renderAlternatives(data.alternative_careers);
     }
@@ -3480,6 +3527,102 @@ window.onload = async () => {
                 });
             }, 150); // 150ms buffer gives the UI breathing room before starting
         });
+    }
+
+    function renderAdmissionRequirements(assessment) {
+        const panel = document.getElementById('admissionRequirementsPanel');
+        const container = document.getElementById('admissionRequirementsList');
+        container.replaceChildren();
+
+        if (!assessment || typeof assessment !== 'object') {
+            panel.style.display = 'none';
+            return;
+        }
+
+        panel.style.display = 'block';
+        const source = document.createElement('p');
+        source.className = 'text-muted small mb-3';
+        source.textContent = `${assessment.source || 'KUCCPS 2025/2026 DEGREE PROGRAMMES'}: subject minima only. These do not confirm admission; mean-grade, cutoff, cluster-point, institution-specific and current-year rules may also apply.`;
+        container.appendChild(source);
+
+        const records = Array.isArray(assessment.records) ? assessment.records : [];
+        if (records.length === 0) {
+            const unavailable = document.createElement('p');
+            unavailable.className = 'mb-0 text-muted';
+            unavailable.textContent = 'No structured subject requirements were found for this course in the cited KUCCPS document. Check the institution’s current official entry requirements.';
+            container.appendChild(unavailable);
+            return;
+        }
+
+        records.forEach(record => {
+            const section = document.createElement('section');
+            section.className = 'border rounded-3 p-3 mb-3';
+
+            const heading = document.createElement('h6');
+            heading.className = 'fw-bold mb-1';
+            heading.textContent = `${record.institution || 'Institution'} — ${record.course || 'Course'}`;
+            section.appendChild(heading);
+
+            const sourceLine = document.createElement('p');
+            sourceLine.className = 'small text-muted mb-2';
+            sourceLine.textContent = `KUCCPS programme code ${record.program_code || 'not listed'}; source PDF page ${record.source_page || 'not listed'}${record.course_page_verified ? '; official course page also verified' : '; official course page not verified'}.`;
+            section.appendChild(sourceLine);
+
+            const status = document.createElement('p');
+            status.className = 'small fw-semibold mb-2';
+            status.textContent = record.status || 'Not assessed';
+            section.appendChild(status);
+
+            const requirements = Array.isArray(record.requirements) ? record.requirements : [];
+            if (requirements.length === 0) {
+                const unavailable = document.createElement('p');
+                unavailable.className = 'small text-muted mb-0';
+                unavailable.textContent = 'The source row did not contain subject minima that could be reliably read.';
+                section.appendChild(unavailable);
+            } else {
+                const table = document.createElement('table');
+                table.className = 'table table-sm table-borderless mb-0';
+                table.style.fontSize = '0.85rem';
+                const body = document.createElement('tbody');
+                requirements.forEach(requirement => {
+                    const row = document.createElement('tr');
+                    const subject = document.createElement('td');
+                    subject.className = 'py-1';
+                    subject.textContent = (requirement.subjects || []).join(' or ') || 'Subject';
+                    const minimum = document.createElement('td');
+                    minimum.className = 'py-1';
+                    minimum.textContent = `Minimum: ${requirement.minimum_grade || 'not specified'}`;
+                    const attained = document.createElement('td');
+                    attained.className = 'py-1';
+                    const gradeText = (requirement.attained || [])
+                        .map(item => `${item.subject}: ${item.grade}`)
+                        .join(', ');
+                    attained.textContent = gradeText || 'Not provided';
+                    const result = document.createElement('td');
+                    result.className = 'py-1 text-end';
+                    result.textContent = requirement.status || 'Not assessed';
+                    row.append(subject, minimum, attained, result);
+                    body.appendChild(row);
+                });
+                table.appendChild(body);
+                section.appendChild(table);
+            }
+
+            if (record.unparsed_subject_cells && record.unparsed_subject_cells.length) {
+                const note = document.createElement('p');
+                note.className = 'small text-muted mt-2 mb-0';
+                note.textContent = 'Some subject fields in this source row could not be reliably interpreted and are not included above.';
+                section.appendChild(note);
+            }
+            container.appendChild(section);
+        });
+
+        if (assessment.omitted_record_count > 0) {
+            const omitted = document.createElement('p');
+            omitted.className = 'small text-muted mb-0';
+            omitted.textContent = `${assessment.omitted_record_count} additional KUCCPS programme listing(s) were omitted from this view.`;
+            container.appendChild(omitted);
+        }
     }
 
     function renderUniversities(unis) {
@@ -3606,6 +3749,7 @@ window.onload = async () => {
 
 // --- MAIN AI RECOMMENDATION LOGIC ---
     async function getRecommendations() {
+        if (careerChatRecommendationPending) return;
         const profileData = getCurrentCareerProfileData();
         if (!profileData.interest) {
             showSection('profile');
@@ -3638,6 +3782,7 @@ window.onload = async () => {
             <h2 class="fw-bold">Exploring Your Study Options...</h2>
             <p class="text-secondary">Finding relevant courses, study pathways, and entry requirements. Grades are optional.</p>
         `;
+        careerChatRecommendationPending = true;
 try {
             console.group("🚀 Recommendation Process Trace");
             console.log("%cStep 1: Sending course interests and available grades...", "color: #3498db; font-weight: bold;");
@@ -3729,6 +3874,8 @@ if (!data.alternative_careers || data.alternative_careers.length === 0) {
                     <p class="mb-0">Could not complete the recommendation process: ${error.message}</p>
                 </div>
             `;
+        } finally {
+            careerChatRecommendationPending = false;
         }
     }
     function refineRecommendations() { 
