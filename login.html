@@ -282,8 +282,8 @@
         async function handleAuth(event) {
             event.preventDefault();
             const user = document.getElementById('loginUsername').value.trim();
-            const pass = document.getElementById('loginPassword').value.trim();
-            const confirmPass = document.getElementById('loginConfirmPassword').value.trim();
+            const pass = document.getElementById('loginPassword').value;
+            const confirmPass = document.getElementById('loginConfirmPassword').value;
             const email = document.getElementById('loginEmail').value.trim().toLowerCase();
             const msg = document.getElementById('loginMessage');
             const btn = document.getElementById('authBtn');
