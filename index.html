@@ -2084,6 +2084,13 @@ window.onload = async () => {
             course.append(document.createTextNode(` · ${result.points}/84 points`));
         }
         card.appendChild(course);
+        const cutoffSummary = formatCourseCutoffSummary(result);
+        if (cutoffSummary) {
+            const cutoffSummaryLine = document.createElement('p');
+            cutoffSummaryLine.className = "small text-primary mb-2";
+            cutoffSummaryLine.textContent = cutoffSummary;
+            card.appendChild(cutoffSummaryLine);
+        }
 
         const actions = document.createElement('div');
         actions.className = "d-flex gap-2 mt-3";
@@ -3661,6 +3668,39 @@ window.onload = async () => {
         }
         const latest = record.latest;
         return `Latest historical KUCCPS cutoff: ${latest.points} cluster points (${latest.year}); ${cutoff.source || 'KUCCPS programme cutoffs'}, PDF page ${record.source_page || 'not listed'}. Historical values do not guarantee admission.`;
+    }
+
+    function formatCourseCutoffSummary(result) {
+        const cutoffsByInstitution = new Map();
+        const addCutoff = (institution, cutoff) => {
+            const name = typeof institution === "string" ? institution.trim() : "";
+            const key = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+            if (!key || cutoffsByInstitution.has(key) || !Array.isArray(cutoff?.records)) return;
+            const record = cutoff.records.find(item =>
+                item?.latest
+                && item.latest.points !== null
+                && item.latest.points !== ""
+                && Number.isFinite(Number(item.latest.points))
+            );
+            if (!record) return;
+            cutoffsByInstitution.set(
+                key,
+                `${name}: ${record.latest.points} cluster points (${record.latest.year})`
+            );
+        };
+
+        (Array.isArray(result?.universities) ? result.universities : []).forEach(university => {
+            addCutoff(university?.name, university?.kuccps_cutoff);
+        });
+        (Array.isArray(result?.admission_requirements?.records)
+            ? result.admission_requirements.records
+            : []
+        ).forEach(record => {
+            addCutoff(record?.institution, record?.kuccps_cutoff);
+        });
+
+        if (!cutoffsByInstitution.size) return "";
+        return `Historical KUCCPS cutoffs by institution: ${Array.from(cutoffsByInstitution.values()).join("; ")}. These are historical values, not admission guarantees.`;
     }
 
     function renderUniversities(unis) {
