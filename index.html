@@ -1853,6 +1853,7 @@ window.onload = async () => {
             askedGradeIndex: -1,
             gradeStageDismissed: false,
             completed: false,
+            reportRequested: false,
             assistantName: "CareerPath AI",
             awaitingAssistantName: true,
             answers: {
@@ -1945,6 +1946,7 @@ window.onload = async () => {
             step: wasCompleted ? 0 : saved.step === 5 ? 5 : 0,
             completed: false,
             pending: false,
+            reportRequested: saved.reportRequested === true,
             gradeIndex: Number.isInteger(saved.gradeIndex)
                 ? Math.min(Math.max(saved.gradeIndex, 0), careerGradeSubjects.length)
                 : 0,
@@ -2106,7 +2108,14 @@ window.onload = async () => {
                 reason.textContent = university.reason;
                 item.appendChild(reason);
             }
-            const requirements = Array.isArray(university.requirements) ? university.requirements : [];
+                const cutoff = formatKuccpsCutoff(university.kuccps_cutoff);
+                if (cutoff) {
+                    const cutoffLine = document.createElement('p');
+                    cutoffLine.className = "small text-secondary mb-1";
+                    cutoffLine.textContent = cutoff;
+                    item.appendChild(cutoffLine);
+                }
+                const requirements = Array.isArray(university.requirements) ? university.requirements : [];
             if (requirements.length) {
                 const requirementSection = document.createElement('div');
                 requirementSection.className = "career-chat-result-requirements";
@@ -2171,6 +2180,7 @@ window.onload = async () => {
             universities: universities.slice(0, 8).map(university => ({
                 name: typeof university.name === "string" ? university.name : "Institution",
                 reason: typeof university.reason === "string" ? university.reason : "",
+                kuccps_cutoff: university.kuccps_cutoff || null,
                 requirements: Array.isArray(university.requirements_met)
                     ? university.requirements_met.map(requirement => ({
                         subject: typeof requirement.subject === "string" ? requirement.subject : "",
@@ -2731,6 +2741,11 @@ window.onload = async () => {
         return /^(?:hi|hello|hey|hiya|howdy|good morning|good afternoon|good evening)(?: there)?[.!?,\s]*$/i.test(message.trim());
     }
 
+    function isCareerReportRequest(message) {
+        return /\b(report|roadmap|study plan|career plan)\b/i.test(message)
+            && /\b(generate|create|make|prepare|write|need|want|request|download|save|give|produce)\b/i.test(message);
+    }
+
     async function submitCareerChatAnswer() {
         if (careerChatState.pending) return;
         const input = document.getElementById('careerChatInput');
@@ -2748,6 +2763,8 @@ window.onload = async () => {
         const attachmentNames = careerChatAttachments.map(file => file.name);
         const messageText = value || `Please review the attached ${attachmentNames.join(", ")}.`;
         const submittedAttachments = [...careerChatAttachments];
+        const requestedReport = isCareerReportRequest(value);
+        if (requestedReport) careerChatState.reportRequested = true;
         const wasAwaitingAssistantName = careerChatState.awaitingAssistantName;
         if (!careerChatState.messages.some(message => message.role === "user")) {
             careerChatState.messages = careerChatState.messages.filter(message =>
@@ -2786,6 +2803,7 @@ window.onload = async () => {
             && (!isNameRequest || (choseAssistantName && nameHasAdditionalDetails))
             && !careerChatState.awaitingAssistantName
             && !isStartingAction
+            && !requestedReport
         ) {
             careerChatState.answers.interest = value;
         }
@@ -2804,6 +2822,11 @@ window.onload = async () => {
 
         let failureMessage = "";
         try {
+            if (requestedReport && careerChatState.answers.interest.trim() && !submittedAttachments.length) {
+                previewProfile();
+                await getRecommendations();
+                return;
+            }
             let response;
             if (submittedAttachments.length) {
                 const formData = new FormData();
@@ -2853,6 +2876,11 @@ window.onload = async () => {
                 && Object.keys(careerChatState.answers.grades).length >= 7
             ) {
                 previewProfile();
+            }
+            if (careerChatState.reportRequested && careerChatState.answers.interest.trim()) {
+                careerChatState.reportRequested = false;
+                previewProfile();
+                await getRecommendations();
             }
         } catch (error) {
             careerChatState.messages.pop();
@@ -3388,22 +3416,6 @@ window.onload = async () => {
     }
 
     
-    // --- NEW BACKGROUND SAVE FUNCTION ---
-    async function saveReportToHistory(reportData) {
-        try {
-            await fetch(`${API_URL}/save-history`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username: currentUser,
-                    report: reportData
-                })
-            });
-            updateSidebarBadgeOnly(); // Updates the notification number instantly!
-        } catch (err) {
-            console.error("Failed to save background history", err);
-        }
-    }
     function renderDashboard(data) {
         let careerUrl = data.career_exploration_url;
         if (!careerUrl || !careerUrl.startsWith('http')) {
@@ -3567,6 +3579,13 @@ window.onload = async () => {
             sourceLine.className = 'small text-muted mb-2';
             sourceLine.textContent = `KUCCPS programme code ${record.program_code || 'not listed'}; source PDF page ${record.source_page || 'not listed'}${record.course_page_verified ? '; official course page also verified' : '; official course page not verified'}.`;
             section.appendChild(sourceLine);
+            const cutoff = formatKuccpsCutoff(record.kuccps_cutoff);
+            if (cutoff) {
+                const cutoffLine = document.createElement('p');
+                cutoffLine.className = 'small text-primary mb-2';
+                cutoffLine.textContent = cutoff;
+                section.appendChild(cutoffLine);
+            }
 
             const status = document.createElement('p');
             status.className = 'small fw-semibold mb-2';
@@ -3625,6 +3644,19 @@ window.onload = async () => {
         }
     }
 
+    function formatKuccpsCutoff(cutoff) {
+        const record = Array.isArray(cutoff?.records)
+            ? cutoff.records.find(item => item && item.latest)
+            : null;
+        if (cutoff === undefined) return "";
+        if (cutoff === null) return "No historical KUCCPS cutoff matched for this institution and course.";
+        if (!record) {
+            return "The programme is listed, but no numeric historical cutoff is available.";
+        }
+        const latest = record.latest;
+        return `Latest historical KUCCPS cutoff: ${latest.points} cluster points (${latest.year}); ${cutoff.source || 'KUCCPS programme cutoffs'}, PDF page ${record.source_page || 'not listed'}. Historical values do not guarantee admission.`;
+    }
+
     function renderUniversities(unis) {
         const container = document.getElementById('resultsList');
         container.innerHTML = "";
@@ -3667,11 +3699,13 @@ window.onload = async () => {
                 const linkLabel = hasVerifiedCoursePage
                     ? "View Verified Course Page"
                     : "Official Course Page Not Verified";
+                const cutoffSummary = formatKuccpsCutoff(uni.kuccps_cutoff);
                 const cardContent = `
                     <div class="card uni-card h-100 p-4">
                         <h5 class="fw-bold text-dark mb-2">${uni.name}</h5>
                         <h6 class="text-primary fw-bold mb-3 border-bottom pb-3"><i class="fas fa-graduation-cap me-2"></i>${courseName}</h6>
                         <p class="text-muted small mb-0 mt-2"><strong>Why it fits:</strong> ${uni.reason}</p>
+                        ${cutoffSummary ? `<p class="small text-primary mt-2 mb-0">${cutoffSummary}</p>` : ""}
                         ${reqHtml}
                         <div class="mt-3 text-end small ${hasVerifiedCoursePage ? "text-primary" : "text-muted"} fw-bold">
                             <i class="fas ${hasVerifiedCoursePage ? "fa-external-link-alt" : "fa-circle-exclamation"} me-1"></i> ${linkLabel}
@@ -3847,6 +3881,8 @@ if (!data.alternative_careers || data.alternative_careers.length === 0) {
             // Final check before updating UI
             if (!data) throw new Error("Data object is empty");
 
+            if (careerChatState) careerChatState.reportRequested = false;
+
             // 4. Update the UI with results
             document.getElementById('aiLoader').style.display = 'none';
             document.getElementById('resultsContainer').style.display = 'block';
@@ -3859,9 +3895,7 @@ if (!data.alternative_careers || data.alternative_careers.length === 0) {
             document.getElementById('emailReportBtn').style.display = 'inline-block';
 
             // 5. 💾 Save report
-            if (typeof saveReportToHistory === "function") {
-                saveReportToHistory(data);
-            }
+            updateSidebarBadgeOnly();
             addCareerRecommendationToChat(data);
 
         } catch (error) {
@@ -3991,6 +4025,7 @@ if (!data.alternative_careers || data.alternative_careers.length === 0) {
     function viewReport(index) {
         currentViewedReport = globalReports[index];
         const data = currentViewedReport.ai_response || currentViewedReport;
+        const reportMetadata = currentViewedReport.report_metadata || data.report_metadata || {};
         
         const modal = new bootstrap.Modal(document.getElementById('reportViewModal'));
         
@@ -4004,6 +4039,21 @@ if (!data.alternative_careers || data.alternative_careers.length === 0) {
             `;
         }
 
+        let admissionHtml = "";
+        const admissionRecords = Array.isArray(data.admission_requirements?.records)
+            ? data.admission_requirements.records
+            : [];
+        if (admissionRecords.length) {
+            admissionHtml = `<h6 class="fw-bold mt-4"><i class="fas fa-list-check me-2 text-primary"></i>Eligibility and historical cutoffs</h6>`;
+            admissionRecords.slice(0, 8).forEach(record => {
+                const requirementLines = (record.requirements || []).map(group => {
+                    const subjects = (group.subjects || []).join(" or ");
+                    return `${subjects}: minimum ${group.minimum_grade || "not specified"} · ${group.status || "Not assessed"}`;
+                }).join("<br>");
+                admissionHtml += `<div class="border rounded-3 p-3 mb-2"><strong>${escapeCareerChatHtml(record.institution || "Institution")}</strong><br><small>${escapeCareerChatHtml(record.course || "")}</small><br><small class="text-primary">${escapeCareerChatHtml(formatKuccpsCutoff(record.kuccps_cutoff))}</small>${requirementLines ? `<div class="small mt-2">${escapeCareerChatHtml(requirementLines).replace(/&lt;br&gt;/g, "<br>")}</div>` : ""}</div>`;
+            });
+        }
+
         let roadmapHtml = data.ai_roadmap 
             ? data.ai_roadmap.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>') 
             : "No specific action plan saved.";
@@ -4012,10 +4062,14 @@ if (!data.alternative_careers || data.alternative_careers.length === 0) {
         if (data.universities && data.universities.length > 0) {
             uniHtml = `<h6 class="fw-bold mt-4"><i class="fas fa-university me-2 text-primary"></i>Top Institutional Matches:</h6><ul class="list-group mb-3">`;
             data.universities.slice(0, 3).forEach(u => {
-                uniHtml += `<li class="list-group-item bg-light border-0 mb-1 rounded"><strong>${u.name}</strong><br><small class="text-muted">${u.reason}</small></li>`;
+                const cutoff = formatKuccpsCutoff(u.kuccps_cutoff);
+                uniHtml += `<li class="list-group-item bg-light border-0 mb-1 rounded"><strong>${u.name}</strong><br><small class="text-muted">${u.reason}</small>${cutoff ? `<br><small class="text-primary">${cutoff}</small>` : ""}</li>`;
             });
             uniHtml += `</ul>`;
         }
+        const reportContextHtml = reportMetadata.student_request
+            ? `<div class="alert alert-light border small"><strong>Prepared for your request:</strong> ${escapeCareerChatHtml(reportMetadata.student_request)}<br><strong>Grade profile:</strong> ${escapeCareerChatHtml(reportMetadata.grade_status || "not provided")}${reportMetadata.aggregate_points != null ? ` · ${reportMetadata.aggregate_points}/84 points` : ""}<br><span class="text-muted">${escapeCareerChatHtml(reportMetadata.assessment_note || "")}</span></div>`
+            : "";
 
         document.getElementById('modalContent').innerHTML = `
             <div class="mb-3">
@@ -4023,6 +4077,7 @@ if (!data.alternative_careers || data.alternative_careers.length === 0) {
                 <h3 class="fw-bold text-dark mb-1">${data.specific_course || data.course}</h3>
                 <h6 class="text-secondary">Target Role: ${data.ai_role}</h6>
             </div>
+            ${reportContextHtml}
             
             ${reasonHtml}
             
@@ -4032,6 +4087,7 @@ if (!data.alternative_careers || data.alternative_careers.length === 0) {
                 ${roadmapHtml}
             </div>
             ${uniHtml}
+            ${admissionHtml}
         `;
         
         modal.show();
@@ -4089,8 +4145,11 @@ if (!data.alternative_careers || data.alternative_careers.length === 0) {
 
         let statsText = "";
         if (isSavedReport) {
-            const points = archiveLog?.points || data.validated_points || "Retrieved from Archive";
-            statsText = `Aggregate Points: ${points}`;
+            const metadata = archiveLog?.report_metadata || data.report_metadata || {};
+            const points = archiveLog?.points || metadata.aggregate_points || data.validated_points;
+            statsText = points != null
+                ? `Aggregate Points: ${points}`
+                : `Grade profile: ${metadata.grade_status || "Retrieved from Archive"}`;
         } else {
             const meanGrade = document.getElementById('meanGradeLetter')?.value || "N/A";
             const aggPoints = document.getElementById('aggregatePoints')?.value || "N/A";
@@ -4122,6 +4181,14 @@ if (!data.alternative_careers || data.alternative_careers.length === 0) {
         doc.setFontSize(12);
         doc.text(`Target Role: ${data.ai_role}`, 18, currentY + 22);
         currentY += 40;
+        const reportMetadata = archiveLog?.report_metadata || data.report_metadata || {};
+        if (reportMetadata.student_request) {
+            doc.setFontSize(10);
+            doc.setTextColor(60, 60, 60);
+            const requestLines = doc.splitTextToSize(`Prepared for: ${reportMetadata.student_request}`, 182);
+            doc.text(requestLines, 14, currentY);
+            currentY += requestLines.length * 5 + 4;
+        }
 
         // --- INTEREST MATCH REASON ---
         if (data.interest_match_reason) {
@@ -4169,15 +4236,15 @@ if (!data.alternative_careers || data.alternative_careers.length === 0) {
             doc.setFont("helvetica", "normal"); 
             const tableData = data.universities.map(u => {
                 const reqSummary = u.requirements_met ? u.requirements_met.map(r => `${r.subject}: ${r.attained} (Req: ${r.required})`).join("\n") : "Standard Entry Met";
-                return [u.name, u.specific_course || u.course || u.course_name || "Recommended Degree", reqSummary, u.reason];
+                return [u.name, u.specific_course || u.course || u.course_name || "Recommended Degree", formatKuccpsCutoff(u.kuccps_cutoff), reqSummary, u.reason];
             });
             doc.autoTable({ 
                 startY: currentY + 5, 
-                head: [['Institution', 'Verified Course', 'Requirement Check', 'Reason']], 
+                head: [['Institution', 'Verified Course', 'Historical cutoff', 'Requirement Check', 'Reason']],
                 body: tableData, 
                 theme: 'grid', 
                 headStyles: { fillColor: [79, 70, 229] }, 
-                columnStyles: { 0: { cellWidth: 40 }, 2: { cellWidth: 40 } }, 
+                columnStyles: { 0: { cellWidth: 32 }, 1: { cellWidth: 34 }, 2: { cellWidth: 36 }, 3: { cellWidth: 38 }, 4: { cellWidth: 42 } },
                 styles: { fontSize: 8, cellPadding: 3 } 
             });
         }

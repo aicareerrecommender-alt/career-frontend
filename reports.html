@@ -325,6 +325,7 @@
     function viewReport(index) {
         currentViewedReport = globalReports[index];
         const data = currentViewedReport.ai_response || currentViewedReport;
+        const reportMetadata = currentViewedReport.report_metadata || data.report_metadata || {};
         
         const modal = new bootstrap.Modal(document.getElementById('reportViewModal'));
         
@@ -332,14 +333,35 @@
             ? data.ai_roadmap.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>') 
             : "No specific action plan saved.";
 
+        const reasonHtml = data.interest_match_reason
+            ? `<div class="p-3 my-3 rounded border bg-light"><strong>Why this fits your needs</strong><p class="mb-0 mt-2">${escapeReportHtml(data.interest_match_reason)}</p></div>`
+            : "";
+        let admissionHtml = "";
+        const admissionRecords = Array.isArray(data.admission_requirements?.records)
+            ? data.admission_requirements.records
+            : [];
+        if (admissionRecords.length) {
+            admissionHtml = `<h6 class="fw-bold mt-4"><i class="fas fa-list-check me-2 text-primary"></i>Eligibility and historical cutoffs</h6>`;
+            admissionRecords.slice(0, 8).forEach(record => {
+                const requirementLines = (record.requirements || []).map(group => {
+                    const subjects = (group.subjects || []).join(" or ");
+                    return `${subjects}: minimum ${group.minimum_grade || "not specified"} · ${group.status || "Not assessed"}`;
+                }).join("<br>");
+                admissionHtml += `<div class="border rounded-3 p-3 mb-2"><strong>${escapeReportHtml(record.institution || "Institution")}</strong><br><small>${escapeReportHtml(record.course || "")}</small><br><small class="text-primary">${escapeReportHtml(formatKuccpsCutoff(record.kuccps_cutoff))}</small>${requirementLines ? `<div class="small mt-2">${escapeReportHtml(requirementLines).replace(/&lt;br&gt;/g, "<br>")}</div>` : ""}</div>`;
+            });
+        }
+
         let uniHtml = "";
         if (data.universities && data.universities.length > 0) {
             uniHtml = `<h6 class="fw-bold mt-4"><i class="fas fa-university me-2 text-primary"></i>Top Institutional Matches:</h6><ul class="list-group mb-3">`;
             data.universities.slice(0, 3).forEach(u => {
-                uniHtml += `<li class="list-group-item bg-light border-0 mb-1 rounded"><strong>${u.name}</strong><br><small class="text-muted">${u.reason}</small></li>`;
+                uniHtml += `<li class="list-group-item bg-light border-0 mb-1 rounded"><strong>${u.name}</strong><br><small class="text-muted">${u.reason}</small><br><small class="text-primary">${formatKuccpsCutoff(u.kuccps_cutoff)}</small></li>`;
             });
             uniHtml += `</ul>`;
         }
+        const reportContextHtml = reportMetadata.student_request
+            ? `<div class="alert alert-light border small"><strong>Prepared for your request:</strong> ${escapeReportHtml(reportMetadata.student_request)}<br><strong>Grade profile:</strong> ${escapeReportHtml(reportMetadata.grade_status || "not provided")}${reportMetadata.aggregate_points != null ? ` · ${reportMetadata.aggregate_points}/84 points` : ""}<br><span class="text-muted">${escapeReportHtml(reportMetadata.assessment_note || "")}</span></div>`
+            : "";
 
         document.getElementById('modalContent').innerHTML = `
             <div class="mb-3">
@@ -347,15 +369,34 @@
                 <h3 class="fw-bold text-dark mb-1">${data.specific_course || data.course}</h3>
                 <h6 class="text-secondary">Target Role: ${data.ai_role}</h6>
             </div>
+            ${reportContextHtml}
+            ${reasonHtml}
             <hr class="text-muted my-4">
             <h6 class="fw-bold text-dark mb-3"><i class="fas fa-map-signs text-primary me-2"></i> AI Action Plan</h6>
             <div class="bg-white p-4 rounded-3 border shadow-sm text-secondary" style="line-height: 1.8; font-size: 0.95rem;">
                 ${roadmapHtml}
             </div>
             ${uniHtml}
+            ${admissionHtml}
         `;
         
         modal.show();
+    }
+
+    function escapeReportHtml(value) {
+        const element = document.createElement('span');
+        element.textContent = String(value || "");
+        return element.innerHTML;
+    }
+
+    function formatKuccpsCutoff(cutoff) {
+        const record = Array.isArray(cutoff?.records)
+            ? cutoff.records.find(item => item && item.latest)
+            : null;
+        if (cutoff === undefined) return "";
+        if (cutoff === null) return "No historical KUCCPS cutoff matched for this institution and course.";
+        if (!record) return "The programme is listed, but no numeric historical cutoff is available.";
+        return `Latest historical KUCCPS cutoff: ${record.latest.points} cluster points (${record.latest.year}); ${cutoff.source || 'KUCCPS programme cutoffs'}, PDF page ${record.source_page || 'not listed'}. Historical values do not guarantee admission.`;
     }
 
     // --- PDF GENERATION ENGINE FOR SAVED REPORTS ---
@@ -364,7 +405,8 @@
         const doc = new jsPDF();
         const studentName = currentUser || "Student";
         // Extract points from the root log item or the ai_results
-        const aggPoints = fullLogItem.points || aiResults.validated_points || "Retrieved from Archive";
+        const reportMetadata = fullLogItem.report_metadata || aiResults.report_metadata || {};
+        const aggPoints = fullLogItem.points || reportMetadata.aggregate_points || aiResults.validated_points;
 
         doc.setFillColor(79, 70, 229); 
         doc.rect(0, 0, 210, 40, 'F');
@@ -379,7 +421,13 @@
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(12);
         doc.text(`Name: ${studentName}`, 14, 50);
-        doc.text(`Aggregate Points: ${aggPoints}`, 14, 57);
+        doc.text(
+            aggPoints != null
+                ? `Aggregate Points: ${aggPoints}`
+                : `Grade profile: ${reportMetadata.grade_status || "Retrieved from Archive"}`,
+            14,
+            57
+        );
 
         let currentY = 70; 
         doc.setFillColor(240, 245, 255);
@@ -391,6 +439,13 @@
         doc.setFontSize(12);
         doc.text(`Target Role: ${aiResults.ai_role}`, 18, currentY + 22);
         currentY += 40;
+        if (reportMetadata.student_request) {
+            doc.setFontSize(10);
+            doc.setTextColor(60, 60, 60);
+            const requestLines = doc.splitTextToSize(`Prepared for: ${reportMetadata.student_request}`, 182);
+            doc.text(requestLines, 14, currentY);
+            currentY += requestLines.length * 5 + 4;
+        }
 
         if (aiResults.ai_roadmap) {
             doc.setFontSize(13);
@@ -414,9 +469,9 @@
             doc.setFont("helvetica", "normal"); 
             const tableData = aiResults.universities.map(u => {
                 const reqSummary = u.requirements_met ? u.requirements_met.map(r => `${r.subject}: ${r.attained} (Req: ${r.required})`).join("\n") : "Standard Entry Met";
-                return [u.name, u.specific_course || u.course || u.course_name || "Recommended Degree", reqSummary, u.reason];
+                return [u.name, u.specific_course || u.course || u.course_name || "Recommended Degree", formatKuccpsCutoff(u.kuccps_cutoff), reqSummary, u.reason];
             });
-            doc.autoTable({ startY: currentY + 5, head: [['Institution', 'Verified Course', 'Requirement Check', 'Reason']], body: tableData, theme: 'grid', headStyles: { fillColor: [79, 70, 229] }, columnStyles: { 0: { cellWidth: 40 }, 2: { cellWidth: 40 } }, styles: { fontSize: 8, cellPadding: 3 } });
+            doc.autoTable({ startY: currentY + 5, head: [['Institution', 'Verified Course', 'Historical cutoff', 'Requirement Check', 'Reason']], body: tableData, theme: 'grid', headStyles: { fillColor: [79, 70, 229] }, columnStyles: { 0: { cellWidth: 32 }, 1: { cellWidth: 34 }, 2: { cellWidth: 36 }, 3: { cellWidth: 38 }, 4: { cellWidth: 42 } }, styles: { fontSize: 8, cellPadding: 3 } });
         }
 
         let finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 15 : currentY + 20;
