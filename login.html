@@ -328,7 +328,7 @@
                         msg.innerText = "Success! Redirecting...";
                         localStorage.setItem('user_name', data.user.name); // Using verified name from backend
                         localStorage.setItem('user_email', data.user.email);
-                        setTimeout(() => { window.location.href = "index.html"; }, 500);
+                        window.location.href = "index.html";
                     } else {
                         // REGISTRATION SUCCESS -> SHOW VERIFICATION
                         pendingVerificationEmail = email; 
