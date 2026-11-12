@@ -2189,6 +2189,19 @@ window.onload = async () => {
                 unverified.textContent = "Official course page not verified";
                 item.appendChild(unverified);
             }
+            const applicationUrl = getVerifiedApplicationUrl(
+                university.application_url,
+                university.application_url_verified,
+            );
+            if (applicationUrl) {
+                const applicationLink = document.createElement('a');
+                applicationLink.className = "small d-block mt-2";
+                applicationLink.href = applicationUrl;
+                applicationLink.target = "_blank";
+                applicationLink.rel = "noopener noreferrer";
+                applicationLink.textContent = "Apply through the official portal";
+                item.appendChild(applicationLink);
+            }
             card.appendChild(item);
         });
         container.appendChild(card);
@@ -2217,12 +2230,17 @@ window.onload = async () => {
                     && typeof university.website_url === "string"
                     && /^https:\/\/[^\s]+$/i.test(university.website_url)
                     ? university.website_url
-                    : ""
+                    : "",
+                application_url: getVerifiedApplicationUrl(
+                    university.application_url,
+                    university.application_url_verified,
+                ),
+                application_url_verified: university.application_url_verified === true
             }))
         };
         careerChatState.messages.push({
             role: "assistant",
-            text: `I’ve added your course and institution matches to our conversation, ${currentUser}. Course: ${savedResult.course || "Course options"}. Institutions: ${savedResult.universities.map(university => university.name).join(", ") || "No specific matches"}. Only backend-verified official course pages are linked below.`,
+            text: `I’ve added your course and institution matches to our conversation, ${currentUser}. Course: ${savedResult.course || "Course options"}. Institutions: ${savedResult.universities.map(university => university.name).join(", ") || "No specific matches"}. Only backend-verified official course pages and application links are shown below.`,
             result: savedResult
         });
         careerChatState.step = 0;
@@ -3684,6 +3702,26 @@ window.onload = async () => {
         return "source retrieval status not recorded";
     }
 
+    function getVerifiedApplicationUrl(applicationUrl, isVerified) {
+        if (isVerified !== true || typeof applicationUrl !== "string") return "";
+        try {
+            const url = new URL(applicationUrl);
+            if (
+                url.protocol !== "https:"
+                || !url.hostname
+                || url.username
+                || url.password
+                || (url.port && url.port !== "443")
+            ) {
+                return "";
+            }
+            return url.href;
+        } catch (error) {
+            console.warn("An invalid official application URL was excluded.");
+            return "";
+        }
+    }
+
     function formatKuccpsCutoff(cutoff) {
         const record = Array.isArray(cutoff?.records)
             ? cutoff.records.find(item => item && item.latest)
@@ -3802,6 +3840,10 @@ window.onload = async () => {
                 const linkLabel = hasVerifiedCoursePage
                     ? "View Verified Course Page"
                     : "Official Course Page Not Verified";
+                const applicationUrl = getVerifiedApplicationUrl(
+                    uni.application_url,
+                    uni.application_url_verified,
+                );
                 const cutoffSummary = formatKuccpsCutoff(uni.kuccps_cutoff);
                 const cardContent = `
                     <div class="card uni-card h-100 p-4">
@@ -3814,12 +3856,17 @@ window.onload = async () => {
                             <i class="fas ${hasVerifiedCoursePage ? "fa-external-link-alt" : "fa-circle-exclamation"} me-1"></i> ${linkLabel}
                         </div>
                     </div>`;
+                const courseLink = hasVerifiedCoursePage
+                    ? `<a href="${exactCourseUrl}" target="_blank" rel="noopener noreferrer" class="text-decoration-none text-dark d-block h-100">${cardContent}</a>`
+                    : `<div class="text-dark h-100">${cardContent}</div>`;
+                const applicationLink = applicationUrl
+                    ? `<a href="${applicationUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary btn-sm mt-2">Apply through the official portal</a>`
+                    : "";
 
                 container.innerHTML += `
                     <div class="col-md-6 col-xl-4 mb-4">
-                        ${hasVerifiedCoursePage
-                            ? `<a href="${exactCourseUrl}" target="_blank" rel="noopener noreferrer" class="text-decoration-none text-dark d-block h-100">${cardContent}</a>`
-                            : `<div class="text-dark h-100">${cardContent}</div>`}
+                        ${courseLink}
+                        ${applicationLink}
                     </div>`;
             });
         } else { 
@@ -4153,7 +4200,14 @@ if (!data.alternative_careers || data.alternative_careers.length === 0) {
                     const subjects = (group.subjects || []).join(" or ");
                     return `${subjects}: minimum ${group.minimum_grade || "not specified"} · ${group.status || "Not assessed"}`;
                 }).join("<br>");
-                admissionHtml += `<div class="border rounded-3 p-3 mb-2"><strong>${escapeCareerChatHtml(record.institution || "Institution")}</strong><br><small>${escapeCareerChatHtml(record.course || "")}</small><br><small class="text-primary">${escapeCareerChatHtml(formatKuccpsCutoff(record.kuccps_cutoff))}</small>${requirementLines ? `<div class="small mt-2">${escapeCareerChatHtml(requirementLines).replace(/&lt;br&gt;/g, "<br>")}</div>` : ""}</div>`;
+                const applicationUrl = getVerifiedApplicationUrl(
+                    record.application_url,
+                    record.application_url_verified,
+                );
+                const applicationLink = applicationUrl
+                    ? `<br><a href="${escapeCareerChatHtml(applicationUrl)}" target="_blank" rel="noopener noreferrer">Apply through the official portal</a>`
+                    : "";
+                admissionHtml += `<div class="border rounded-3 p-3 mb-2"><strong>${escapeCareerChatHtml(record.institution || "Institution")}</strong><br><small>${escapeCareerChatHtml(record.course || "")}</small><br><small class="text-primary">${escapeCareerChatHtml(formatKuccpsCutoff(record.kuccps_cutoff))}</small>${applicationLink}${requirementLines ? `<div class="small mt-2">${escapeCareerChatHtml(requirementLines).replace(/&lt;br&gt;/g, "<br>")}</div>` : ""}</div>`;
             });
         }
 
@@ -4166,7 +4220,14 @@ if (!data.alternative_careers || data.alternative_careers.length === 0) {
             uniHtml = `<h6 class="fw-bold mt-4"><i class="fas fa-university me-2 text-primary"></i>Top Institutional Matches:</h6><ul class="list-group mb-3">`;
             data.universities.slice(0, 3).forEach(u => {
                 const cutoff = formatKuccpsCutoff(u.kuccps_cutoff);
-                uniHtml += `<li class="list-group-item bg-light border-0 mb-1 rounded"><strong>${u.name}</strong><br><small class="text-muted">${u.reason}</small>${cutoff ? `<br><small class="text-primary">${cutoff}</small>` : ""}</li>`;
+                const applicationUrl = getVerifiedApplicationUrl(
+                    u.application_url,
+                    u.application_url_verified,
+                );
+                const applicationLink = applicationUrl
+                    ? `<br><a href="${escapeCareerChatHtml(applicationUrl)}" target="_blank" rel="noopener noreferrer">Apply through the official portal</a>`
+                    : "";
+                uniHtml += `<li class="list-group-item bg-light border-0 mb-1 rounded"><strong>${u.name}</strong><br><small class="text-muted">${u.reason}</small>${cutoff ? `<br><small class="text-primary">${cutoff}</small>` : ""}${applicationLink}</li>`;
             });
             uniHtml += `</ul>`;
         }

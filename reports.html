@@ -351,7 +351,14 @@
                 const cutoffSourceLink = cutoffSourceUrl
                     ? `<br><a href="${escapeReportHtml(cutoffSourceUrl)}" target="_blank" rel="noopener noreferrer">Open official KUCCPS cutoff PDF</a>`
                     : "";
-                admissionHtml += `<div class="border rounded-3 p-3 mb-2"><strong>${escapeReportHtml(record.institution || "Institution")}</strong><br><small>${escapeReportHtml(record.course || "")}</small><br><small class="text-primary">${escapeReportHtml(formatKuccpsCutoff(record.kuccps_cutoff))}</small>${cutoffSourceLink}${requirementLines ? `<div class="small mt-2">${escapeReportHtml(requirementLines).replace(/&lt;br&gt;/g, "<br>")}</div>` : ""}</div>`;
+                const applicationUrl = getVerifiedApplicationUrl(
+                    record.application_url,
+                    record.application_url_verified,
+                );
+                const applicationLink = applicationUrl
+                    ? `<br><a href="${escapeReportHtml(applicationUrl)}" target="_blank" rel="noopener noreferrer">Apply through the official portal</a>`
+                    : "";
+                admissionHtml += `<div class="border rounded-3 p-3 mb-2"><strong>${escapeReportHtml(record.institution || "Institution")}</strong><br><small>${escapeReportHtml(record.course || "")}</small><br><small class="text-primary">${escapeReportHtml(formatKuccpsCutoff(record.kuccps_cutoff))}</small>${cutoffSourceLink}${applicationLink}${requirementLines ? `<div class="small mt-2">${escapeReportHtml(requirementLines).replace(/&lt;br&gt;/g, "<br>")}</div>` : ""}</div>`;
             });
         }
 
@@ -359,7 +366,14 @@
         if (data.universities && data.universities.length > 0) {
             uniHtml = `<h6 class="fw-bold mt-4"><i class="fas fa-university me-2 text-primary"></i>Top Institutional Matches:</h6><ul class="list-group mb-3">`;
             data.universities.slice(0, 3).forEach(u => {
-                uniHtml += `<li class="list-group-item bg-light border-0 mb-1 rounded"><strong>${u.name}</strong><br><small class="text-muted">${u.reason}</small><br><small class="text-primary">${formatKuccpsCutoff(u.kuccps_cutoff)}</small></li>`;
+                const applicationUrl = getVerifiedApplicationUrl(
+                    u.application_url,
+                    u.application_url_verified,
+                );
+                const applicationLink = applicationUrl
+                    ? `<br><a href="${escapeReportHtml(applicationUrl)}" target="_blank" rel="noopener noreferrer">Apply through the official portal</a>`
+                    : "";
+                uniHtml += `<li class="list-group-item bg-light border-0 mb-1 rounded"><strong>${u.name}</strong><br><small class="text-muted">${u.reason}</small><br><small class="text-primary">${formatKuccpsCutoff(u.kuccps_cutoff)}</small>${applicationLink}</li>`;
             });
             uniHtml += `</ul>`;
         }
@@ -401,6 +415,23 @@
                 : "";
         } catch (error) {
             console.warn("An invalid KUCCPS cutoff source URL was excluded.");
+            return "";
+        }
+    }
+
+    function getVerifiedApplicationUrl(applicationUrl, isVerified) {
+        if (isVerified !== true || typeof applicationUrl !== "string") return "";
+        try {
+            const url = new URL(applicationUrl);
+            return url.protocol === "https:"
+                && url.hostname
+                && !url.username
+                && !url.password
+                && (!url.port || url.port === "443")
+                ? url.href
+                : "";
+        } catch (error) {
+            console.warn("An invalid official application URL was excluded.");
             return "";
         }
     }
