@@ -347,7 +347,11 @@
                     const subjects = (group.subjects || []).join(" or ");
                     return `${subjects}: minimum ${group.minimum_grade || "not specified"} · ${group.status || "Not assessed"}`;
                 }).join("<br>");
-                admissionHtml += `<div class="border rounded-3 p-3 mb-2"><strong>${escapeReportHtml(record.institution || "Institution")}</strong><br><small>${escapeReportHtml(record.course || "")}</small><br><small class="text-primary">${escapeReportHtml(formatKuccpsCutoff(record.kuccps_cutoff))}</small>${requirementLines ? `<div class="small mt-2">${escapeReportHtml(requirementLines).replace(/&lt;br&gt;/g, "<br>")}</div>` : ""}</div>`;
+                const cutoffSourceUrl = getOfficialKuccpsCutoffUrl(record.kuccps_cutoff);
+                const cutoffSourceLink = cutoffSourceUrl
+                    ? `<br><a href="${escapeReportHtml(cutoffSourceUrl)}" target="_blank" rel="noopener noreferrer">Open official KUCCPS cutoff PDF</a>`
+                    : "";
+                admissionHtml += `<div class="border rounded-3 p-3 mb-2"><strong>${escapeReportHtml(record.institution || "Institution")}</strong><br><small>${escapeReportHtml(record.course || "")}</small><br><small class="text-primary">${escapeReportHtml(formatKuccpsCutoff(record.kuccps_cutoff))}</small>${cutoffSourceLink}${requirementLines ? `<div class="small mt-2">${escapeReportHtml(requirementLines).replace(/&lt;br&gt;/g, "<br>")}</div>` : ""}</div>`;
             });
         }
 
@@ -389,6 +393,35 @@
         return element.innerHTML;
     }
 
+    function getOfficialKuccpsCutoffUrl(cutoff) {
+        try {
+            const url = new URL(cutoff?.source_url || "");
+            return url.protocol === "https:" && url.hostname === "statics.kuccps.net"
+                ? url.href
+                : "";
+        } catch (error) {
+            console.warn("An invalid KUCCPS cutoff source URL was excluded.");
+            return "";
+        }
+    }
+
+    function kuccpsCutoffRetrievalLabel(cutoff) {
+        if (cutoff?.retrieval_status === "online") {
+            const retrievedAt = cutoff.retrieved_at ? new Date(cutoff.retrieved_at) : null;
+            const checkedDate = retrievedAt && !Number.isNaN(retrievedAt.getTime())
+                ? ` on ${retrievedAt.toLocaleDateString('en-GB')}`
+                : "";
+            return `fetched from the official KUCCPS online source${checkedDate}`;
+        }
+        if (cutoff?.retrieval_status === "stale_online_cache") {
+            return "using the last successful online snapshot because the latest refresh failed";
+        }
+        if (cutoff?.retrieval_status === "offline_snapshot") {
+            return "using the bundled offline snapshot because the online source was unavailable";
+        }
+        return "source retrieval status not recorded";
+    }
+
     function formatKuccpsCutoff(cutoff) {
         const record = Array.isArray(cutoff?.records)
             ? cutoff.records.find(item => item && item.latest)
@@ -396,7 +429,8 @@
         if (cutoff === undefined) return "";
         if (cutoff === null) return "No historical KUCCPS cutoff matched for this institution and course.";
         if (!record) return "The programme is listed, but no numeric historical cutoff is available.";
-        return `Latest historical KUCCPS cutoff: ${record.latest.points} cluster points (${record.latest.year}); ${cutoff.source || 'KUCCPS programme cutoffs'}, PDF page ${record.source_page || 'not listed'}. Historical values do not guarantee admission.`;
+        const publishedThrough = cutoff.latest_published_cutoff_year || record.latest.year;
+        return `Latest published KUCCPS cutoff: ${record.latest.points} cluster points (${record.latest.year}); ${cutoff.source || 'KUCCPS programme cutoffs'}, PDF page ${record.source_page || 'not listed'}; ${kuccpsCutoffRetrievalLabel(cutoff)}. This source has cutoff data through ${publishedThrough}, not necessarily the current admission cycle, and the values do not guarantee admission.`;
     }
 
     // --- PDF GENERATION ENGINE FOR SAVED REPORTS ---

@@ -2091,6 +2091,16 @@ window.onload = async () => {
             cutoffSummaryLine.textContent = cutoffSummary;
             card.appendChild(cutoffSummaryLine);
         }
+        const cutoffSourceUrl = getOfficialKuccpsCutoffUrl(result);
+        if (cutoffSourceUrl) {
+            const cutoffSourceLink = document.createElement('a');
+            cutoffSourceLink.className = "small";
+            cutoffSourceLink.href = cutoffSourceUrl;
+            cutoffSourceLink.target = "_blank";
+            cutoffSourceLink.rel = "noopener noreferrer";
+            cutoffSourceLink.textContent = "Open official KUCCPS cutoff PDF";
+            card.appendChild(cutoffSourceLink);
+        }
 
         const actions = document.createElement('div');
         actions.className = "d-flex gap-2 mt-3";
@@ -3657,6 +3667,23 @@ window.onload = async () => {
         }
     }
 
+    function kuccpsCutoffRetrievalLabel(cutoff) {
+        if (cutoff?.retrieval_status === "online") {
+            const retrievedAt = cutoff.retrieved_at ? new Date(cutoff.retrieved_at) : null;
+            const checkedDate = retrievedAt && !Number.isNaN(retrievedAt.getTime())
+                ? ` on ${retrievedAt.toLocaleDateString('en-GB')}`
+                : "";
+            return `fetched from the official KUCCPS online source${checkedDate}`;
+        }
+        if (cutoff?.retrieval_status === "stale_online_cache") {
+            return "using the last successful online snapshot because the latest refresh failed";
+        }
+        if (cutoff?.retrieval_status === "offline_snapshot") {
+            return "using the bundled offline snapshot because the online source was unavailable";
+        }
+        return "source retrieval status not recorded";
+    }
+
     function formatKuccpsCutoff(cutoff) {
         const record = Array.isArray(cutoff?.records)
             ? cutoff.records.find(item => item && item.latest)
@@ -3667,15 +3694,41 @@ window.onload = async () => {
             return "The programme is listed, but no numeric historical cutoff is available.";
         }
         const latest = record.latest;
-        return `Latest historical KUCCPS cutoff: ${latest.points} cluster points (${latest.year}); ${cutoff.source || 'KUCCPS programme cutoffs'}, PDF page ${record.source_page || 'not listed'}. Historical values do not guarantee admission.`;
+        const publishedThrough = cutoff.latest_published_cutoff_year || latest.year;
+        return `Latest published KUCCPS cutoff: ${latest.points} cluster points (${latest.year}); ${cutoff.source || 'KUCCPS programme cutoffs'}, PDF page ${record.source_page || 'not listed'}; ${kuccpsCutoffRetrievalLabel(cutoff)}. This source has cutoff data through ${publishedThrough}, not necessarily the current admission cycle, and the values do not guarantee admission.`;
+    }
+
+    function getOfficialKuccpsCutoffUrl(result) {
+        const cutoffs = [
+            ...(Array.isArray(result?.universities)
+                ? result.universities.map(university => university?.kuccps_cutoff)
+                : []),
+            ...(Array.isArray(result?.admission_requirements?.records)
+                ? result.admission_requirements.records.map(record => record?.kuccps_cutoff)
+                : [])
+        ];
+        for (const cutoff of cutoffs) {
+            try {
+                const url = new URL(cutoff?.source_url || "");
+                if (url.protocol === "https:" && url.hostname === "statics.kuccps.net") {
+                    return url.href;
+                }
+            } catch (error) {
+                console.warn("An invalid KUCCPS cutoff source URL was excluded.");
+                continue;
+            }
+        }
+        return "";
     }
 
     function formatCourseCutoffSummary(result) {
         const cutoffsByInstitution = new Map();
+        const cutoffSources = [];
         const addCutoff = (institution, cutoff) => {
             const name = typeof institution === "string" ? institution.trim() : "";
             const key = name.toLowerCase().replace(/[^a-z0-9]/g, "");
             if (!key || cutoffsByInstitution.has(key) || !Array.isArray(cutoff?.records)) return;
+            cutoffSources.push(cutoff);
             const record = cutoff.records.find(item =>
                 item?.latest
                 && item.latest.points !== null
@@ -3700,7 +3753,11 @@ window.onload = async () => {
         });
 
         if (!cutoffsByInstitution.size) return "";
-        return `Historical KUCCPS cutoffs by institution: ${Array.from(cutoffsByInstitution.values()).join("; ")}. These are historical values, not admission guarantees.`;
+        const publishedThrough = Math.max(
+            ...cutoffSources.map(cutoff => Number(cutoff.latest_published_cutoff_year) || 0)
+        );
+        const retrieval = kuccpsCutoffRetrievalLabel(cutoffSources[0]);
+        return `Latest published KUCCPS cutoffs by institution: ${Array.from(cutoffsByInstitution.values()).join("; ")}. Data through ${publishedThrough || "the year shown"}, ${retrieval}; these are not necessarily current-cycle cutoffs and do not guarantee admission.`;
     }
 
     function renderUniversities(unis) {
