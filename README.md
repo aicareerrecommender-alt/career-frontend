@@ -129,3 +129,10 @@ frntend/
   utils/           AI, database, and course discovery helpers
   tests/           Backend unit tests
 ```
+
+## License and third-party materials
+
+Original frontend source code and project-authored documentation are licensed
+under the [MIT License](LICENSE). This license does not apply to third-party
+libraries, fonts, icons, images, trademarks, or other materials, which remain
+subject to their respective owners' rights and terms.
