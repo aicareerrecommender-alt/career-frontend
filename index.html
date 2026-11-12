@@ -3746,8 +3746,10 @@ window.onload = async () => {
                 : [])
         ];
         for (const cutoff of cutoffs) {
+            const sourceUrl = cutoff?.source_url;
+            if (typeof sourceUrl !== "string" || !sourceUrl.trim()) continue;
             try {
-                const url = new URL(cutoff?.source_url || "");
+                const url = new URL(sourceUrl);
                 if (url.protocol === "https:" && url.hostname === "statics.kuccps.net") {
                     return url.href;
                 }
