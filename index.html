@@ -1876,6 +1876,12 @@ window.onload = async () => {
         };
     }
 
+    function isCareerChatWelcomeMessage(message) {
+        return message?.role === "assistant"
+            && typeof message.text === "string"
+            && /^Hi .*?(?:I(?:’m|'m) CareerPath AI\b|ask me anything about careers|I(?:’m|'m) your guide to Kenyan careers and courses)/i.test(message.text);
+    }
+
     function initializeCareerChat() {
         const key = `${currentUser}_career_chat`;
         const welcomeBackKey = `${currentUser}_career_chat_welcomed_back`;
@@ -1901,7 +1907,11 @@ window.onload = async () => {
         if (!careerChatState.messages.length) {
             careerChatState.messages.push(careerChatWelcomeMessage());
             careerChatState.awaitingAssistantName = true;
-        } else if (
+        } else if (!isCareerChatWelcomeMessage(careerChatState.messages[0])) {
+            careerChatState.messages.unshift(careerChatWelcomeMessage());
+            saveCareerChat();
+        }
+        if (
             careerChatState.messages.some(message => message.role === "user")
             && sessionStorage.getItem(welcomeBackKey) !== "true"
         ) {
@@ -1928,11 +1938,7 @@ window.onload = async () => {
             ...(Array.isArray(message.suggestions) ? { suggestions: message.suggestions } : {}),
             ...(message.result && typeof message.result === "object" ? { result: message.result } : {})
         }));
-        if (
-            messages[0]?.role === "assistant"
-            && /^Hi .*?(?:I(?:’m|'m) CareerPath AI\b|ask me anything about careers|I(?:’m|'m) your guide to Kenyan careers and courses)/i.test(messages[0].text)
-            && !messages.some(message => message.role === "user")
-        ) {
+        if (isCareerChatWelcomeMessage(messages[0])) {
             messages[0] = careerChatWelcomeMessage();
         }
         return {
