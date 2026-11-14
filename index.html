@@ -757,6 +757,44 @@
             box-shadow: 0 8px 24px rgba(30, 41, 59, 0.08);
         }
 
+        .career-chat-starter {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-width: 860px;
+            margin: 0 auto 12px;
+        }
+
+        .career-chat-starter-label {
+            margin: 0;
+            color: var(--career-muted);
+            font-size: 0.88rem;
+            font-weight: 600;
+        }
+
+        .career-chat-starter-prompts {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .career-chat-starter-prompt {
+            padding: 8px 12px;
+            border: 1px solid var(--career-border);
+            border-radius: 999px;
+            background: #fff;
+            color: var(--career-text);
+            font-size: 0.86rem;
+            text-align: left;
+            transition: border-color 0.15s ease, background-color 0.15s ease;
+        }
+
+        .career-chat-starter-prompt:hover,
+        .career-chat-starter-prompt:focus-visible {
+            border-color: var(--career-primary);
+            background: var(--career-sidebar);
+        }
+
         .career-chat-composer textarea {
             min-height: 48px;
             max-height: 150px;
@@ -978,6 +1016,22 @@
                 border-radius: 15px;
             }
 
+            .career-chat-starter {
+                gap: 6px;
+                margin-bottom: 8px;
+            }
+
+            .career-chat-starter-prompts {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 6px;
+            }
+
+            .career-chat-starter-prompt {
+                padding: 7px 10px;
+                font-size: clamp(0.78rem, 3.2vw, 0.88rem);
+            }
+
             .career-chat-composer textarea {
                 min-width: 0;
                 min-height: 44px;
@@ -1172,6 +1226,14 @@
                     <div id="careerChatNotice" class="alert alert-warning mx-3 mx-md-4 mb-0 py-2" role="alert" style="display: none;"></div>
 
                     <div id="careerChatControls" class="p-3 p-md-4">
+                        <div id="careerChatStarter" class="career-chat-starter" style="display: none;">
+                            <p class="career-chat-starter-label">Not sure where to start? Try asking:</p>
+                            <div class="career-chat-starter-prompts">
+                                <button class="career-chat-starter-prompt" type="button" onclick="submitCareerChatStarter(this)" data-prompt="I enjoy biology and helping people. What health careers could suit me?">Find careers that fit my interests</button>
+                                <button class="career-chat-starter-prompt" type="button" onclick="submitCareerChatStarter(this)" data-prompt="What courses in Kenya could fit my KCSE grades and interests?">Explore courses for my grades</button>
+                                <button class="career-chat-starter-prompt" type="button" onclick="submitCareerChatStarter(this)" data-prompt="How do computer science and software engineering differ?">Compare popular study paths</button>
+                            </div>
+                        </div>
                         <div id="careerChatComposer" class="career-chat-composer">
                             <div class="position-relative flex-shrink-0">
                                 <button id="careerChatAttachButton" class="btn btn-outline-secondary rounded-circle" type="button" aria-label="Add a document, photo, or video" aria-expanded="false" onclick="toggleCareerAttachmentMenu()" style="width: 46px; height: 46px;">
@@ -2465,6 +2527,7 @@ window.onload = async () => {
         const gradeIndex = careerChatState.gradeIndex;
         const chatCard = document.getElementById('careerChatCard');
         const isNewConversation = step === 0 && careerChatState.messages.length <= 1;
+        const hasStartedConversation = careerChatState.messages.some(message => message.role === "user");
         const title = document.getElementById('careerChatTitle');
         const assistantName = careerChatState.assistantName || "CareerPath AI";
         if (title) {
@@ -2473,6 +2536,8 @@ window.onload = async () => {
         document.getElementById('careerChatAvatar').textContent = Array.from(assistantName.trim())[0] || "C";
         updateCareerChatPrivacyLabel();
         chatCard.classList.toggle("is-empty", isNewConversation);
+        document.getElementById('careerChatStarter').style.display =
+            step === 0 && !hasStartedConversation ? "flex" : "none";
         if (
             step === 5
             && gradeIndex < careerGradeSubjects.length
@@ -2652,6 +2717,15 @@ window.onload = async () => {
 
         updateTotalPoints();
         messageLog.scrollTop = messageLog.scrollHeight;
+    }
+
+    function submitCareerChatStarter(button) {
+        const prompt = button.dataset.prompt;
+        if (!prompt || careerChatState.pending) return;
+        const input = document.getElementById('careerChatInput');
+        input.value = prompt;
+        careerChatState.draft = prompt;
+        submitCareerChatAnswer();
     }
 
     function renderCareerChatAttachments() {
