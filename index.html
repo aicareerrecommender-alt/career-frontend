@@ -632,18 +632,89 @@
         .career-chat-explore-options {
             align-self: flex-start;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
             gap: 8px;
-            width: min(100%, 860px);
+            width: 100%;
+            max-width: 1000px;
             padding: 14px;
             border: 1px solid var(--career-border);
             border-radius: 14px;
             background: #fff;
         }
 
-        .career-chat-explore-options strong {
+        .career-chat-explore-options > strong {
             grid-column: 1 / -1;
             color: var(--career-text);
+        }
+
+        .career-chat-explore-area {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-width: 0;
+            padding: 14px;
+            border: 1px solid var(--career-border);
+            border-radius: 12px;
+            background: var(--career-surface);
+        }
+
+        .career-chat-explore-area h6,
+        .career-chat-explore-course h6 {
+            margin: 0;
+            color: var(--career-text);
+            font-weight: 700;
+        }
+
+        .career-chat-explore-area > p,
+        .career-chat-explore-course > p {
+            margin: 0;
+            color: var(--career-muted);
+            font-size: 0.88rem;
+            line-height: 1.5;
+        }
+
+        .career-chat-explore-course {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 7px;
+            min-width: 0;
+            padding-top: 10px;
+            border-top: 1px solid var(--career-border);
+        }
+
+        .career-chat-explore-course-questions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .career-chat-scroll-actions {
+            position: absolute;
+            right: 20px;
+            bottom: 104px;
+            z-index: 5;
+            display: none;
+            gap: 8px;
+        }
+
+        .career-chat-scroll-actions button {
+            display: inline-flex;
+            width: 42px;
+            height: 42px;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            border: 1px solid var(--career-border);
+            border-radius: 50%;
+            background: #fff;
+            color: var(--career-text);
+            box-shadow: 0 4px 14px rgba(30, 41, 59, 0.16);
+        }
+
+        .career-chat-scroll-actions button:hover {
+            border-color: var(--career-primary);
+            color: var(--career-primary);
         }
 
         .career-chat-suggestion {
@@ -973,6 +1044,15 @@
                 min-width: 0;
             }
 
+            .career-chat-explore-options {
+                grid-template-columns: minmax(0, 1fr);
+                padding: 10px;
+            }
+
+            .career-chat-explore-area {
+                padding: 12px;
+            }
+
             .career-chat-continue {
                 align-items: stretch;
                 flex-direction: column;
@@ -1054,6 +1134,17 @@
 
             #careerChatControls {
                 padding: 10px !important;
+            }
+
+            .career-chat-scroll-actions {
+                right: 12px;
+                bottom: 86px;
+                gap: 6px;
+            }
+
+            .career-chat-scroll-actions button {
+                width: 38px;
+                height: 38px;
             }
 
             .career-grade-summary {
@@ -1222,6 +1313,14 @@
                         <div id="careerChatAttachments" class="flex-wrap gap-2 mt-2" style="display: none;"></div>
                         <small id="careerChatAttachmentPrivacy" class="text-secondary mt-2" style="display: none;">Attachments are sent to the AI service to answer this message and are not saved to your profile. Videos must be 5 MB or smaller.</small>
                         <small id="careerChatVoiceStatus" class="text-secondary mt-2" aria-live="polite"></small>
+                    </div>
+                    <div id="careerChatScrollActions" class="career-chat-scroll-actions" aria-label="Conversation navigation">
+                        <button id="careerChatScrollTop" type="button" aria-label="Scroll conversation to top" title="Scroll to top" onclick="scrollCareerChat('top')">
+                            <i class="fas fa-arrow-up" aria-hidden="true"></i>
+                        </button>
+                        <button id="careerChatScrollBottom" type="button" aria-label="Scroll conversation to bottom" title="Scroll to bottom" onclick="scrollCareerChat('bottom')">
+                            <i class="fas fa-arrow-down" aria-hidden="true"></i>
+                        </button>
                     </div>
                     <div id="careerChatNotice" class="alert alert-warning mx-3 mx-md-4 mb-0 py-2" role="alert" style="display: none;"></div>
 
@@ -1599,6 +1698,215 @@
         { key: "ComputerStudies", label: "Computer Studies" },
         { key: "HomeScience", label: "Home Science" }
     ];
+
+    const careerExploreAreas = [
+        {
+            title: "Health and healthcare",
+            description: "Learn how science and patient care support health, treatment, and wellbeing.",
+            courses: [
+                {
+                    title: "Nursing and Midwifery",
+                    interest: "Nursing and Midwifery",
+                    description: "Prepare to care for patients, support safe childbirth, and promote health in communities.",
+                    questions: [
+                        "What do students learn in Nursing and Midwifery?",
+                        "What careers can Nursing and Midwifery lead to?"
+                    ]
+                },
+                {
+                    title: "Medicine and Surgery",
+                    interest: "Medicine and Surgery",
+                    description: "Study how to assess, diagnose, prevent, and treat illness across different stages of life.",
+                    questions: [
+                        "What do students learn in Medicine and Surgery?",
+                        "What careers can Medicine and Surgery lead to?"
+                    ]
+                },
+                {
+                    title: "Medical Laboratory Science",
+                    interest: "Medical Laboratory Science",
+                    description: "Use laboratory tests and biological samples to help identify and monitor disease.",
+                    questions: [
+                        "What do students learn in Medical Laboratory Science?",
+                        "What careers can Medical Laboratory Science lead to?"
+                    ]
+                }
+            ]
+        },
+        {
+            title: "Computing and information technology",
+            description: "Explore how software, data, and digital systems are designed and used.",
+            courses: [
+                {
+                    title: "Computer Science",
+                    interest: "Computer Science",
+                    description: "Study programming, algorithms, data, and the theory behind computing systems.",
+                    questions: [
+                        "What do students learn in Computer Science?",
+                        "What careers can Computer Science lead to?"
+                    ]
+                },
+                {
+                    title: "Software Engineering",
+                    interest: "Software Engineering",
+                    description: "Learn to plan, build, test, and maintain reliable software for real-world needs.",
+                    questions: [
+                        "What do students learn in Software Engineering?",
+                        "What careers can Software Engineering lead to?"
+                    ]
+                },
+                {
+                    title: "Information Technology",
+                    interest: "Information Technology",
+                    description: "Focus on the networks, devices, and services that organizations rely on.",
+                    questions: [
+                        "What do students learn in Information Technology?",
+                        "What careers can Information Technology lead to?"
+                    ]
+                }
+            ]
+        },
+        {
+            title: "Business and finance",
+            description: "Build skills for managing money, organizations, and business decisions.",
+            courses: [
+                {
+                    title: "Accounting",
+                    interest: "Accounting",
+                    description: "Learn to record, interpret, and report financial information for organizations.",
+                    questions: [
+                        "What do students learn in Accounting?",
+                        "What careers can Accounting lead to?"
+                    ]
+                },
+                {
+                    title: "Finance and Banking",
+                    interest: "Finance and Banking",
+                    description: "Explore financial services, lending, investment, and how money moves through markets.",
+                    questions: [
+                        "What do students learn in Finance and Banking?",
+                        "What careers can Finance and Banking lead to?"
+                    ]
+                },
+                {
+                    title: "Business Management",
+                    interest: "Business Management",
+                    description: "Study how teams, operations, and strategy help businesses and organizations work.",
+                    questions: [
+                        "What do students learn in Business Management?",
+                        "What careers can Business Management lead to?"
+                    ]
+                }
+            ]
+        },
+        {
+            title: "Engineering and construction",
+            description: "Apply maths and science to design, build, and improve the systems around us.",
+            courses: [
+                {
+                    title: "Civil Engineering",
+                    interest: "Civil Engineering",
+                    description: "Design and maintain infrastructure such as buildings, roads, bridges, and water systems.",
+                    questions: [
+                        "What do students learn in Civil Engineering?",
+                        "What careers can Civil Engineering lead to?"
+                    ]
+                },
+                {
+                    title: "Electrical and Electronic Engineering",
+                    interest: "Electrical and Electronic Engineering",
+                    description: "Work with electrical power, electronic devices, communications, and control systems.",
+                    questions: [
+                        "What do students learn in Electrical and Electronic Engineering?",
+                        "What careers can Electrical and Electronic Engineering lead to?"
+                    ]
+                },
+                {
+                    title: "Mechanical Engineering",
+                    interest: "Mechanical Engineering",
+                    description: "Explore machines, energy, manufacturing, and the design of mechanical systems.",
+                    questions: [
+                        "What do students learn in Mechanical Engineering?",
+                        "What careers can Mechanical Engineering lead to?"
+                    ]
+                }
+            ]
+        },
+        {
+            title: "Education and teaching",
+            description: "Prepare to support learning and help learners build knowledge and confidence.",
+            courses: [
+                {
+                    title: "Early Childhood Development and Education",
+                    interest: "Early Childhood Development and Education",
+                    description: "Focus on how young children learn and how to support their early development.",
+                    questions: [
+                        "What do students learn in Early Childhood Development and Education?",
+                        "What careers can Early Childhood Development and Education lead to?"
+                    ]
+                },
+                {
+                    title: "Primary Teacher Education",
+                    interest: "Primary Teacher Education",
+                    description: "Prepare to teach foundational subjects and support learners in primary school.",
+                    questions: [
+                        "What do students learn in Primary Teacher Education?",
+                        "What careers can Primary Teacher Education lead to?"
+                    ]
+                },
+                {
+                    title: "Education (Arts or Science)",
+                    interest: "Education (Arts or Science)",
+                    description: "Combine a subject specialism with teaching methods for secondary education.",
+                    questions: [
+                        "What do students learn in Education (Arts or Science)?",
+                        "What careers can Education (Arts or Science) lead to?"
+                    ]
+                }
+            ]
+        },
+        {
+            title: "Agriculture and environment",
+            description: "Explore food systems, natural resources, and practical ways to care for the environment.",
+            courses: [
+                {
+                    title: "Agriculture",
+                    interest: "Agriculture",
+                    description: "Study crop and animal production, soil, farm systems, and agribusiness.",
+                    questions: [
+                        "What do students learn in Agriculture?",
+                        "What careers can Agriculture lead to?"
+                    ]
+                },
+                {
+                    title: "Environmental Science",
+                    interest: "Environmental Science",
+                    description: "Understand ecosystems, environmental change, conservation, and sustainable resource use.",
+                    questions: [
+                        "What do students learn in Environmental Science?",
+                        "What careers can Environmental Science lead to?"
+                    ]
+                },
+                {
+                    title: "Food Science and Technology",
+                    interest: "Food Science and Technology",
+                    description: "Apply science to food processing, nutrition, quality, and safety.",
+                    questions: [
+                        "What do students learn in Food Science and Technology?",
+                        "What careers can Food Science and Technology lead to?"
+                    ]
+                }
+            ]
+        }
+    ];
+
+    function findCareerExploreCourse(interest) {
+        const normalizedInterest = typeof interest === "string" ? interest.trim().toLocaleLowerCase() : "";
+        if (!normalizedInterest) return null;
+        return careerExploreAreas
+            .flatMap(area => area.courses)
+            .find(course => course.interest.toLocaleLowerCase() === normalizedInterest) || null;
+    }
     
     const gradesMap = {
         "A": 12, "A-": 11, "B+": 10, "B": 9, "B-": 8, 
@@ -1638,6 +1946,13 @@ window.onload = async () => {
         document.getElementById("sidebar-user").innerText = currentUser;
         await loadDataConsent();
         initializeCareerChat();
+        document.getElementById('careerChatMessages').addEventListener(
+            'scroll',
+            syncCareerChatScrollActions,
+            { passive: true }
+        );
+        window.addEventListener('resize', syncCareerChatScrollActions);
+        syncCareerChatScrollActions();
         updateTotalPoints();
         document.getElementById('careerChatInput').addEventListener('keydown', event => {
             if (event.key === 'Enter' && !event.shiftKey) {
@@ -2271,6 +2586,7 @@ window.onload = async () => {
 
     function addCareerRecommendationToChat(result) {
         const universities = Array.isArray(result.universities) ? result.universities : [];
+        const exploredCourse = findCareerExploreCourse(careerChatState.answers.interest);
         const savedResult = {
             ...result,
             course: typeof result.specific_course === "string" ? result.specific_course : "",
@@ -2302,7 +2618,8 @@ window.onload = async () => {
         };
         careerChatState.messages.push({
             role: "assistant",
-            text: `I’ve added your course and institution matches to our conversation, ${currentUser}. Course: ${savedResult.course || "Course options"}. Institutions: ${savedResult.universities.map(university => university.name).join(", ") || "No specific matches"}. Only backend-verified official course pages and application links are shown below.`,
+            text: `${exploredCourse ? `Here’s what ${exploredCourse.title} is about: ${exploredCourse.description}\n\n` : ""}I’ve added your course and institution matches to our conversation, ${currentUser}. Course: ${savedResult.course || "Course options"}. Institutions: ${savedResult.universities.map(university => university.name).join(", ") || "No specific matches"}. Only backend-verified official course pages and application links are shown below.`,
+            ...(exploredCourse ? { suggestions: exploredCourse.questions } : {}),
             result: savedResult
         });
         careerChatState.step = 0;
@@ -2604,30 +2921,55 @@ window.onload = async () => {
         const exploreOptions = document.getElementById('careerChatExploreOptions');
         exploreOptions.replaceChildren();
         const savedInterest = careerChatState.answers.interest.trim();
-        const exploreChoices = careerChatState.exploreOptionsOpen
-            ? [
-                ...(savedInterest && !isCareerChatGreeting(savedInterest)
-                    ? [{ label: "Explore what I told you", interest: savedInterest }]
-                    : []),
-                { label: "Nursing and healthcare", interest: "Nursing and healthcare" },
-                { label: "Computing and information technology", interest: "Computing and information technology" },
-                { label: "Business and finance", interest: "Business and finance" },
-                { label: "Engineering and construction", interest: "Engineering and construction" },
-                { label: "Education and teaching", interest: "Education and teaching" },
-                { label: "Agriculture and environmental studies", interest: "Agriculture and environmental studies" }
-            ]
-            : [];
-        if (exploreChoices.length) {
+        if (careerChatState.exploreOptionsOpen) {
             const heading = document.createElement('strong');
-            heading.textContent = "Choose an area to explore";
+            heading.textContent = "Browse courses, learn what they cover, or ask a question";
             exploreOptions.appendChild(heading);
-            exploreChoices.forEach(choice => {
+            if (savedInterest && !isCareerChatGreeting(savedInterest)) {
                 const button = document.createElement('button');
                 button.type = "button";
                 button.className = "career-chat-suggestion";
-                button.textContent = choice.label;
-                button.addEventListener('click', () => selectCareerChatExploreOption(choice.interest));
+                button.textContent = `Explore what I told you: ${savedInterest}`;
+                button.addEventListener('click', () => selectCareerChatExploreOption(savedInterest));
                 exploreOptions.appendChild(button);
+            }
+            careerExploreAreas.forEach(area => {
+                const areaCard = document.createElement('section');
+                areaCard.className = "career-chat-explore-area";
+                const areaTitle = document.createElement('h6');
+                areaTitle.textContent = area.title;
+                const areaDescription = document.createElement('p');
+                areaDescription.textContent = area.description;
+                areaCard.append(areaTitle, areaDescription);
+
+                area.courses.forEach(course => {
+                    const courseCard = document.createElement('div');
+                    courseCard.className = "career-chat-explore-course";
+                    const courseTitle = document.createElement('h6');
+                    courseTitle.textContent = course.title;
+                    const courseDescription = document.createElement('p');
+                    courseDescription.textContent = course.description;
+                    const exploreButton = document.createElement('button');
+                    exploreButton.type = "button";
+                    exploreButton.className = "btn btn-sm btn-outline-primary rounded-pill";
+                    exploreButton.textContent = `Explore ${course.title}`;
+                    exploreButton.addEventListener('click', () =>
+                        selectCareerChatExploreOption(course.interest)
+                    );
+                    const questions = document.createElement('div');
+                    questions.className = "career-chat-explore-course-questions";
+                    course.questions.forEach(question => {
+                        const questionButton = document.createElement('button');
+                        questionButton.type = "button";
+                        questionButton.className = "career-chat-suggestion";
+                        questionButton.textContent = question;
+                        questionButton.addEventListener('click', () => askCareerChatPrompt(question));
+                        questions.appendChild(questionButton);
+                    });
+                    courseCard.append(courseTitle, courseDescription, exploreButton, questions);
+                    areaCard.appendChild(courseCard);
+                });
+                exploreOptions.appendChild(areaCard);
             });
             exploreOptions.style.display = "grid";
         } else {
@@ -2717,6 +3059,31 @@ window.onload = async () => {
 
         updateTotalPoints();
         messageLog.scrollTop = messageLog.scrollHeight;
+        requestAnimationFrame(syncCareerChatScrollActions);
+    }
+
+    function syncCareerChatScrollActions() {
+        const messageLog = document.getElementById('careerChatMessages');
+        const actions = document.getElementById('careerChatScrollActions');
+        const scrollTopButton = document.getElementById('careerChatScrollTop');
+        const scrollBottomButton = document.getElementById('careerChatScrollBottom');
+        if (!messageLog || !actions || !scrollTopButton || !scrollBottomButton) return;
+
+        const hasOverflow = messageLog.scrollHeight > messageLog.clientHeight + 4;
+        const isAtTop = messageLog.scrollTop <= 4;
+        const isAtBottom = messageLog.scrollHeight - messageLog.clientHeight - messageLog.scrollTop <= 4;
+        actions.style.display = hasOverflow ? "flex" : "none";
+        scrollTopButton.style.display = hasOverflow && !isAtTop ? "inline-flex" : "none";
+        scrollBottomButton.style.display = hasOverflow && !isAtBottom ? "inline-flex" : "none";
+    }
+
+    function scrollCareerChat(position) {
+        const messageLog = document.getElementById('careerChatMessages');
+        if (!messageLog) return;
+        messageLog.scrollTo({
+            top: position === "top" ? 0 : messageLog.scrollHeight,
+            behavior: "smooth"
+        });
     }
 
     function submitCareerChatStarter(button) {
@@ -3061,6 +3428,15 @@ window.onload = async () => {
         careerChatState.exploreOptionsOpen = true;
         document.getElementById('careerChatNotice').style.display = "none";
         renderCareerChat();
+    }
+
+    function askCareerChatPrompt(prompt) {
+        if (!prompt || careerChatState.pending || careerChatRecommendationPending) return;
+        careerChatState.exploreOptionsOpen = false;
+        const input = document.getElementById('careerChatInput');
+        input.value = prompt;
+        careerChatState.draft = prompt;
+        submitCareerChatAnswer();
     }
 
     function selectCareerChatExploreOption(option) {
