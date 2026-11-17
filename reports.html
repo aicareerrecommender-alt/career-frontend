@@ -366,6 +366,19 @@
         if (data.universities && data.universities.length > 0) {
             uniHtml = `<h6 class="fw-bold mt-4"><i class="fas fa-university me-2 text-primary"></i>Top Institutional Matches:</h6><ul class="list-group mb-3">`;
             data.universities.slice(0, 3).forEach(u => {
+                const universityName = escapeReportHtml(u.name || "Institution");
+                const universityCourse = [u.specific_course, u.course, u.course_name]
+                    .find(value => typeof value === "string" && value.trim()) || "";
+                const coursePageUrl = getVerifiedCoursePageUrl(u, data.specific_course || data.course);
+                const universityTitle = coursePageUrl
+                    ? `<a href="${escapeReportHtml(coursePageUrl)}" target="_blank" rel="noopener noreferrer" aria-label="View ${escapeReportHtml(universityCourse)} at ${universityName}">${universityName}</a>`
+                    : `<strong>${universityName}</strong>`;
+                const coursePageStatus = coursePageUrl
+                    ? ""
+                    : `<br><small class="text-muted">Official course page not verified</small>`;
+                const courseLine = universityCourse
+                    ? `<br><small>${escapeReportHtml(universityCourse)}</small>`
+                    : "";
                 const applicationUrl = getVerifiedApplicationUrl(
                     u.application_url,
                     u.application_url_verified,
@@ -373,7 +386,12 @@
                 const applicationLink = applicationUrl
                     ? `<br><a href="${escapeReportHtml(applicationUrl)}" target="_blank" rel="noopener noreferrer">Apply through the official portal</a>`
                     : "";
-                uniHtml += `<li class="list-group-item bg-light border-0 mb-1 rounded"><strong>${u.name}</strong><br><small class="text-muted">${u.reason}</small><br><small class="text-primary">${formatKuccpsCutoff(u.kuccps_cutoff)}</small>${applicationLink}</li>`;
+                const cutoff = formatKuccpsCutoff(u.kuccps_cutoff);
+                const cutoffSourceUrl = getOfficialKuccpsCutoffUrl(u.kuccps_cutoff);
+                const cutoffSourceLink = cutoffSourceUrl
+                    ? `<br><a href="${escapeReportHtml(cutoffSourceUrl)}" target="_blank" rel="noopener noreferrer">Open official KUCCPS cutoff PDF</a>`
+                    : "";
+                uniHtml += `<li class="list-group-item bg-light border-0 mb-1 rounded">${universityTitle}${courseLine}${coursePageStatus}<br><small class="text-muted">${escapeReportHtml(u.reason || "")}</small>${cutoff ? `<br><small class="text-primary">${escapeReportHtml(cutoff)}</small>${cutoffSourceLink}` : ""}${applicationLink}</li>`;
             });
             uniHtml += `</ul>`;
         }
@@ -436,6 +454,33 @@
         }
     }
 
+    function getVerifiedCoursePageUrl(university, recommendedCourse) {
+        const course = [university?.specific_course, university?.course, university?.course_name]
+            .find(value => typeof value === "string" && value.trim())?.trim() || "";
+        if (
+            university?.verified_offering !== true
+            || !course
+            || typeof recommendedCourse !== "string"
+            || course.toLocaleLowerCase() !== recommendedCourse.trim().toLocaleLowerCase()
+            || typeof university.website_url !== "string"
+        ) {
+            return "";
+        }
+        try {
+            const url = new URL(university.website_url);
+            return url.protocol === "https:"
+                && url.hostname
+                && !url.username
+                && !url.password
+                && (!url.port || url.port === "443")
+                ? url.href
+                : "";
+        } catch (error) {
+            console.warn("An invalid verified course-page URL was excluded.");
+            return "";
+        }
+    }
+
     function kuccpsCutoffRetrievalLabel(cutoff) {
         if (cutoff?.retrieval_status === "online") {
             const retrievedAt = cutoff.retrieved_at ? new Date(cutoff.retrieved_at) : null;
@@ -468,10 +513,10 @@
     function buildPDFDocument(aiResults, fullLogItem) {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        const studentName = currentUser || "Student";
         // Extract points from the root log item or the ai_results
         const reportMetadata = fullLogItem.report_metadata || aiResults.report_metadata || {};
         const aggPoints = fullLogItem.points || reportMetadata.aggregate_points || aiResults.validated_points;
+        const mainPath = aiResults.specific_course || aiResults.course || aiResults.career_path || aiResults.ai_role;
 
         doc.setFillColor(79, 70, 229); 
         doc.rect(0, 0, 210, 40, 'F');
@@ -485,7 +530,7 @@
 
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(12);
-        doc.text(`Name: ${studentName}`, 14, 50);
+        doc.text("You are exploring a personalized study pathway.", 14, 50);
         doc.text(
             aggPoints != null
                 ? `Aggregate Points: ${aggPoints}`
@@ -499,7 +544,6 @@
         doc.rect(14, currentY, 182, 30, 'F');
         doc.setFontSize(14);
         doc.setTextColor(0, 51, 102);
-        const mainPath = aiResults.specific_course || aiResults.course || aiResults.career_path || aiResults.ai_role;
         doc.text(`Recommended Path: ${mainPath} (${aiResults.level || "Degree"})`, 18, currentY + 12);
         doc.setFontSize(12);
         doc.text(`Target Role: ${aiResults.ai_role}`, 18, currentY + 22);

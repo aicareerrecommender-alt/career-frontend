@@ -4172,6 +4172,33 @@ window.onload = async () => {
         }
     }
 
+    function getVerifiedCoursePageUrl(university, recommendedCourse) {
+        const course = [university?.specific_course, university?.course, university?.course_name]
+            .find(value => typeof value === "string" && value.trim())?.trim() || "";
+        if (
+            university?.verified_offering !== true
+            || !course
+            || typeof recommendedCourse !== "string"
+            || course.toLocaleLowerCase() !== recommendedCourse.trim().toLocaleLowerCase()
+            || typeof university.website_url !== "string"
+        ) {
+            return "";
+        }
+        try {
+            const url = new URL(university.website_url);
+            return url.protocol === "https:"
+                && url.hostname
+                && !url.username
+                && !url.password
+                && (!url.port || url.port === "443")
+                ? url.href
+                : "";
+        } catch (error) {
+            console.warn("An invalid verified course-page URL was excluded.");
+            return "";
+        }
+    }
+
     function formatKuccpsCutoff(cutoff) {
         const record = Array.isArray(cutoff?.records)
             ? cutoff.records.find(item => item && item.latest)
@@ -4671,7 +4698,24 @@ if (!data.alternative_careers || data.alternative_careers.length === 0) {
         if (data.universities && data.universities.length > 0) {
             uniHtml = `<h6 class="fw-bold mt-4"><i class="fas fa-university me-2 text-primary"></i>Top Institutional Matches:</h6><ul class="list-group mb-3">`;
             data.universities.slice(0, 3).forEach(u => {
+                const universityName = escapeCareerChatHtml(u.name || "Institution");
+                const universityCourse = [u.specific_course, u.course, u.course_name]
+                    .find(value => typeof value === "string" && value.trim()) || "";
+                const coursePageUrl = getVerifiedCoursePageUrl(u, data.specific_course || data.course);
+                const universityTitle = coursePageUrl
+                    ? `<a href="${escapeCareerChatHtml(coursePageUrl)}" target="_blank" rel="noopener noreferrer" aria-label="View ${escapeCareerChatHtml(universityCourse)} at ${universityName}">${universityName}</a>`
+                    : `<strong>${universityName}</strong>`;
+                const coursePageStatus = coursePageUrl
+                    ? ""
+                    : `<br><small class="text-muted">Official course page not verified</small>`;
+                const courseLine = universityCourse
+                    ? `<br><small>${escapeCareerChatHtml(universityCourse)}</small>`
+                    : "";
                 const cutoff = formatKuccpsCutoff(u.kuccps_cutoff);
+                const cutoffSourceUrl = getOfficialKuccpsCutoffUrl({ universities: [u] });
+                const cutoffSourceLink = cutoffSourceUrl
+                    ? `<br><a href="${escapeCareerChatHtml(cutoffSourceUrl)}" target="_blank" rel="noopener noreferrer">Open official KUCCPS cutoff PDF</a>`
+                    : "";
                 const applicationUrl = getVerifiedApplicationUrl(
                     u.application_url,
                     u.application_url_verified,
@@ -4679,7 +4723,7 @@ if (!data.alternative_careers || data.alternative_careers.length === 0) {
                 const applicationLink = applicationUrl
                     ? `<br><a href="${escapeCareerChatHtml(applicationUrl)}" target="_blank" rel="noopener noreferrer">Apply through the official portal</a>`
                     : "";
-                uniHtml += `<li class="list-group-item bg-light border-0 mb-1 rounded"><strong>${u.name}</strong><br><small class="text-muted">${u.reason}</small>${cutoff ? `<br><small class="text-primary">${cutoff}</small>` : ""}${applicationLink}</li>`;
+                uniHtml += `<li class="list-group-item bg-light border-0 mb-1 rounded">${universityTitle}${courseLine}${coursePageStatus}<br><small class="text-muted">${escapeCareerChatHtml(u.reason || "")}</small>${cutoff ? `<br><small class="text-primary">${escapeCareerChatHtml(cutoff)}</small>${cutoffSourceLink}` : ""}${applicationLink}</li>`;
             });
             uniHtml += `</ul>`;
         }
@@ -4752,7 +4796,6 @@ if (!data.alternative_careers || data.alternative_careers.length === 0) {
     function buildMasterPDF(data, isSavedReport = false, archiveLog = null) {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        const studentName = currentUser || "Student";
 
         // Determine dynamic text based on whether it's an archive or a live report
         const dateText = isSavedReport && archiveLog?.timestamp 
@@ -4783,7 +4826,7 @@ if (!data.alternative_careers || data.alternative_careers.length === 0) {
 
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(12);
-        doc.text(`Name: ${studentName}`, 14, 50);
+        doc.text("You are exploring a personalized study pathway.", 14, 50);
         doc.text(statsText, 14, 57);
 
         // --- RECOMMENDATION HIGHLIGHT ---
